@@ -9,22 +9,9 @@ using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Get database connection string - prefer DATABASE_URL environment variable (Railway)
-var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
-string connectionString;
-
-if (!string.IsNullOrEmpty(databaseUrl))
-{
-    // Convert Railway's postgres:// URL to Npgsql connection string
-    var uri = new Uri(databaseUrl);
-    connectionString = $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')};Username={uri.UserInfo.Split(':')[0]};Password={uri.UserInfo.Split(':')[1]};SSL Mode=Require;Trust Server Certificate=true";
-    Console.WriteLine("✅ Using Railway DATABASE_URL from environment");
-}
-else
-{
-    connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-    Console.WriteLine("✅ Using local connection string from appsettings");
-}
+// Use connection string from appsettings.json (Railway public hostname)
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+Console.WriteLine("✅ Using connection string from appsettings");
 
 // Add services to the container.
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
