@@ -4,6 +4,9 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  // Set base path for GitHub Pages subdirectory
+  base: '/eConnectOneV1/',
+  
   plugins: [
     react(),
     VitePWA({
@@ -19,16 +22,16 @@ export default defineConfig({
         theme_color: '#1976d2',
         background_color: '#1976d2',
         display: 'standalone',
-        scope: '/',
-        start_url: '/',
+        scope: '/eConnectOneV1/',
+        start_url: '/eConnectOneV1/',
         icons: [
           {
-            src: 'vite.svg',
+            src: '/eConnectOneV1/vite.svg',
             sizes: '192x192',
             type: 'image/svg+xml'
           },
           {
-            src: 'vite.svg',
+            src: '/eConnectOneV1/vite.svg',
             sizes: '512x512',
             type: 'image/svg+xml'
           }
