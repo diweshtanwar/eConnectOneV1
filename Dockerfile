@@ -1,5 +1,5 @@
 # Multi-stage build for eConnectOne backend
-FROM mcr.microsoft.com/dotnet/sdk:6.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 
 WORKDIR /src
 
@@ -18,7 +18,7 @@ RUN dotnet build eConnectOne.API.csproj -c Release -o /app/build
 RUN dotnet publish eConnectOne.API.csproj -c Release -o /app/publish
 
 # Runtime stage
-FROM mcr.microsoft.com/dotnet/aspnet:6.0
+FROM mcr.microsoft.com/dotnet/aspnet:9.0
 
 WORKDIR /app
 
