@@ -350,6 +350,7 @@ export interface ImportLogDto {
 export interface AccountLockoutDto {
   userId: number;
   username: string;
+  loginId: string;
   fullName: string;
   email: string;
   roleName: string;

@@ -28,6 +28,8 @@ namespace eConnectOne.API.Controllers
                 .Select(u => new AccountLockoutDto
                 {
                     UserId = u.Id,
+                    Username = u.Username,
+                    LoginId = u.Username,
                     FullName = u.FullName ?? "",
                     Email = u.Email ?? "",
                     RoleName = u.Role!.Name,
@@ -82,6 +84,8 @@ namespace eConnectOne.API.Controllers
                 .Select(u => new AccountLockoutDto
                 {
                     UserId = u.Id,
+                    Username = u.Username,
+                    LoginId = u.Username,
                     FullName = u.FullName ?? "",
                     Email = u.Email ?? "",
                     RoleName = u.Role!.Name,

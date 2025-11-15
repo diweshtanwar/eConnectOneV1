@@ -6,7 +6,7 @@ namespace eConnectOne.API.DTOs
     public class UserResponseDto
     {
     public int Id { get; set; }
-    // Username removed, use UserId for relationships
+    public string? Username { get; set; }
         public string? Email { get; set; }
         public string? FullName { get; set; }
         public string? MobileNumber { get; set; }

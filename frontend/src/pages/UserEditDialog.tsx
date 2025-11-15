@@ -26,7 +26,7 @@ const documentTypes = [
 
 const UserEditDialog: React.FC<UserEditDialogProps> = ({ open, user, onClose, onSave }) => {
   const [tab, setTab] = useState(0);
-  const [form, setForm] = useState(user || {} as UserResponseDto);
+  const [form, setForm] = useState<UserResponseDto>(user || {} as UserResponseDto);
   const [detailsForm, setDetailsForm] = useState({
     name: '',
     code: '',
@@ -60,7 +60,16 @@ const UserEditDialog: React.FC<UserEditDialogProps> = ({ open, user, onClose, on
   const [states, setStates] = useState<{ id: number, name: string }[]>([]);
 
   React.useEffect(() => {
-    setForm(user || {} as UserResponseDto);
+    if (user) {
+      console.log('UserEditDialog - User data:', user);
+      console.log('Username from user:', user.username);
+      setForm({
+        ...user,
+        username: user.username || '',
+        fullName: user.fullName || '',
+        email: user.email || ''
+      });
+    }
     setDocType('');
     setFile(null);
     setError('');
@@ -71,8 +80,9 @@ const UserEditDialog: React.FC<UserEditDialogProps> = ({ open, user, onClose, on
       locationApi.getStates().then(setStates);
       // Fetch user details if user exists
       if (user && user.id) {
-        userApi.getGeneralUserDetails(user.id)
-          .then(details => {
+        userApi.getUserById(user.id)
+          .then(userData => {
+            const details = userData.generalDetails;
             if (details) {
               setDetailsForm({
                 name: details.name || user.fullName || '',
@@ -197,12 +207,19 @@ const UserEditDialog: React.FC<UserEditDialogProps> = ({ open, user, onClose, on
   const handleUserSubmit = async () => {
     setError(''); setLoading(true);
     try {
-      await userApi.updateUser(form.id, form);
+      const updateDto = {
+        username: form.username,
+        fullName: form.fullName,
+        email: form.email,
+        mobileNumber: form.mobileNumber,
+        isActive: form.isActive
+      };
+      await userApi.updateUser(form.id, updateDto);
       setSuccess('User updated successfully!');
       onSave();
-      onClose();
+      setTimeout(() => onClose(), 1000);
     } catch (err: any) {
-      setError(err.message || 'Failed to update user.');
+      setError(err.response?.data?.message || err.message || 'Failed to update user.');
     } finally { setLoading(false); }
   };
 
@@ -230,13 +247,9 @@ const UserEditDialog: React.FC<UserEditDialogProps> = ({ open, user, onClose, on
         countryId: detailsForm.countryId ? parseInt(detailsForm.countryId, 10) : undefined,
         locationId: detailsForm.locationId ? parseInt(detailsForm.locationId, 10) : undefined,
       };
-      if (details && details.id) {
-        await userApi.updateGeneralUserDetails(user.id, payload);
-        setSuccess('User details updated successfully!');
-      } else {
-        await userApi.createGeneralUserDetails(payload);
-        setSuccess('User details created successfully!');
-      }
+      await userApi.updateGeneralUserDetails(user.id, payload);
+      setSuccess('User details updated successfully!');
+      onSave();
       setDetailsForm({
         name: '',
         code: '',
@@ -291,7 +304,15 @@ const UserEditDialog: React.FC<UserEditDialogProps> = ({ open, user, onClose, on
         {success && <Alert severity="success">{success}</Alert>}
         {tab === 0 && (
           <Box>
-            <TextField label="Username" name="username" value={form.username || ''} onChange={handleChange} fullWidth margin="normal" />
+            <TextField 
+              label="Username" 
+              name="username" 
+              value={form?.username || ''} 
+              onChange={handleChange} 
+              fullWidth 
+              margin="normal"
+              helperText="Current username"
+            />
             <TextField label="Full Name" name="fullName" value={form.fullName || ''} onChange={handleChange} fullWidth margin="normal" />
             <TextField label="Email" name="email" value={form.email || ''} onChange={handleChange} fullWidth margin="normal" />
             {/* Add more fields as needed */}

@@ -10,6 +10,7 @@ interface UserPermissions {
 }
 
 interface User {
+  roleName?: string;
   role?: {
     name: string;
   };
@@ -25,6 +26,13 @@ export const filterMenuByPermissions = (
 ): MenuItem[] => {
   if (!user) return [];
 
+  const userRole = user.roleName || user.role?.name;
+
+  // Master Admin and Admin get all pages
+  if (userRole === 'Master Admin' || userRole === 'Admin') {
+    return menuItems;
+  }
+
   return menuItems.filter(item => {
     // Check DB permission first (preferred)
     if (item.permission) {
@@ -34,16 +42,16 @@ export const filterMenuByPermissions = (
         return perm.canView === true;
       }
       // If no DB permission, fallback to roles if defined
-      if (item.roles && user.role?.name) {
-        return item.roles.includes(user.role.name);
+      if (item.roles && userRole) {
+        return item.roles.includes(userRole);
       }
       // No DB permission and no roles = hide
       return false;
     }
     
     // Role-based check only
-    if (item.roles && user.role?.name) {
-      return item.roles.includes(user.role.name);
+    if (item.roles && userRole) {
+      return item.roles.includes(userRole);
     }
     
     // Default: show if no restrictions

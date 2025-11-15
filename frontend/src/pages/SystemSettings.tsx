@@ -12,7 +12,12 @@ export const SystemSettings: React.FC = () => {
   const [filterValues, setFilterValues] = useState<FilterValues>({});
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [availablePermissions, setAvailablePermissions] = useState<string[]>([]);
-  const [roles, setRoles] = useState<{id: number, name: string}[]>([]);
+  const [roles, setRoles] = useState<{id: number, name: string}[]>([
+    { id: 1, name: 'Master Admin' },
+    { id: 2, name: 'Admin' },
+    { id: 3, name: 'HO user' },
+    { id: 4, name: 'CSP' }
+  ]);
   const [newPermission, setNewPermission] = useState({ roleId: '', permission: '', canView: true, canCreate: false, canEdit: false, canDelete: false });
 
   const settingsFilters: FilterOption[] = [
@@ -29,7 +34,11 @@ export const SystemSettings: React.FC = () => {
       { value: 'TicketManagement', label: 'Ticket Management' },
       { value: 'AuditLogs', label: 'Audit Logs' },
       { value: 'SystemSettings', label: 'System Settings' },
-      { value: 'CreateMain', label: 'Create Main' }
+      { value: 'BroadcastManagement', label: 'Broadcast Management' },
+      { value: 'CommissionManagement', label: 'Commission Management' },
+      { value: 'Messages', label: 'Messages' },
+      { value: 'ResourceCenter', label: 'Resource Center' },
+      { value: 'WalletManagement', label: 'Wallet Management' }
     ]}
   ];
 
@@ -46,11 +55,8 @@ export const SystemSettings: React.FC = () => {
         ? availablePerms
         : [...availablePerms, 'CreateMain'];
 
-      // Get roles from existing permissions
-      const uniqueRoles = [...new Map(permissionsData.map(p => [p.roleId, {id: p.roleId, name: p.roleName}])).values()];
       setPermissions(permissionsData);
       setAvailablePermissions(permsWithCreateMain);
-      setRoles(uniqueRoles);
     } catch (err) {
       setError('Failed to fetch permissions.');
     } finally {

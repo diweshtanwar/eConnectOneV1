@@ -186,8 +186,11 @@ namespace eConnectOne.API.Controllers
                 "TicketManagement",
                 "AuditLogs",
                 "SystemSettings",
-                "Reports",
-                "CSPManagement"
+                "BroadcastManagement",
+                "CommissionManagement",
+                "Messages",
+                "ResourceCenter",
+                "WalletManagement"
             };
             
             return Ok(permissions);

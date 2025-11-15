@@ -46,6 +46,7 @@ namespace eConnectOne.API.Services
             var responseDto = new UserResponseDto
             {
                 Id = user.Id,
+                Username = user.Username,
                 Email = user.Email,
                 FullName = user.FullName,
                 MobileNumber = user.MobileNumber,

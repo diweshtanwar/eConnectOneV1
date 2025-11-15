@@ -54,7 +54,7 @@ export const AccountLockout: React.FC = () => {
     
     if (filterValues.search) {
       filtered = filtered.filter(a => 
-        a.username.toLowerCase().includes(filterValues.search.toLowerCase()) ||
+        (a.username || a.loginId || '').toLowerCase().includes(filterValues.search.toLowerCase()) ||
         a.fullName.toLowerCase().includes(filterValues.search.toLowerCase()) ||
         a.email.toLowerCase().includes(filterValues.search.toLowerCase())
       );
@@ -114,7 +114,7 @@ export const AccountLockout: React.FC = () => {
       };
 
       await accountLockoutApi.unlockAccount(unlockDto);
-      setSuccess(`Account unlocked successfully for ${selectedAccount.username}`);
+      setSuccess(`Account unlocked successfully for ${selectedAccount.username || selectedAccount.loginId}`);
       handleCloseUnlockDialog();
       fetchAccounts();
     } catch (error: any) {
@@ -210,7 +210,7 @@ export const AccountLockout: React.FC = () => {
           <TableBody>
             {getFilteredAccounts().map((account) => (
               <TableRow key={account.userId}>
-                <TableCell>{account.username}</TableCell>
+                <TableCell>{account.username || account.loginId}</TableCell>
                 <TableCell>{account.fullName || '-'}</TableCell>
                 <TableCell>
                   <Chip label={account.roleName} size="small" />
@@ -248,7 +248,7 @@ export const AccountLockout: React.FC = () => {
       {/* Unlock Account Dialog */}
       <Dialog open={unlockDialogOpen} onClose={handleCloseUnlockDialog} maxWidth="sm" fullWidth>
         <DialogTitle>
-          Unlock Account: {selectedAccount?.username}
+          Unlock Account: {selectedAccount?.username || selectedAccount?.loginId}
         </DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
