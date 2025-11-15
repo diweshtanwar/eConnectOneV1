@@ -35,7 +35,8 @@ jobs:
       run: dotnet publish backend/eConnectOne.API/eConnectOne.API.csproj -c Release -o ${{ runner.temp }}/backend
     
     - name: Upload artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: backend-artifact
         path: ${{ runner.temp }}/backend
+        retention-days: 5

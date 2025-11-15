@@ -24,7 +24,7 @@ jobs:
       run: dotnet publish backend/eConnectOne.API/eConnectOne.API.csproj -c Release -o ./backend-publish
     
     - name: Upload backend artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: backend-artifact
         path: ./backend-publish
@@ -45,7 +45,7 @@ jobs:
       run: cd frontend && npm install && npm run build
     
     - name: Upload frontend artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: frontend-artifact
         path: frontend/dist
@@ -60,13 +60,13 @@ jobs:
     - uses: actions/checkout@v3
     
     - name: Download backend artifact
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: backend-artifact
         path: ./backend-release
     
     - name: Download frontend artifact
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: frontend-artifact
         path: ./frontend-release

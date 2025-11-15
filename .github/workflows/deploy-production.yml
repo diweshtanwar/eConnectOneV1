@@ -31,12 +31,12 @@ jobs:
         echo "Frontend build complete"
     
     - name: Deploy to GitHub Pages
-      uses: actions/upload-pages-artifact@v2
+      uses: actions/upload-pages-artifact@v3
       with:
         path: 'frontend/dist'
     
     - name: Trigger GitHub Pages deployment
-      uses: actions/deploy-pages@v2
+      uses: actions/deploy-pages@v4
 
   notify-deployment:
     runs-on: ubuntu-latest
