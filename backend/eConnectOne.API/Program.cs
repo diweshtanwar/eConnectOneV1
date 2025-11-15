@@ -53,9 +53,15 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowFrontend",
         builder =>
         {
-            builder.WithOrigins("http://localhost:5173", "http://localhost:3001") // Vite dev server ports
+            builder.WithOrigins(
+                    "http://localhost:5173",           // Vite dev server
+                    "http://localhost:3001",           // Alternative dev port
+                    "https://diweshtanwar.github.io",  // GitHub Pages root
+                    "https://diweshtanwar.github.io/eConnectOneV1"  // GitHub Pages subdirectory
+                )
                    .AllowAnyHeader()
-                   .AllowAnyMethod();
+                   .AllowAnyMethod()
+                   .AllowCredentials();
         });
 });
 
@@ -98,6 +104,15 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+else
+{
+    // Enable Swagger in production too for testing
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.RoutePrefix = "swagger";
+    });
+}
 
 // Add error logging middleware before everything else
 app.UseMiddleware<eConnectOne.API.Middleware.ErrorLoggingMiddleware>();
@@ -115,5 +130,21 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Initialize database on startup
+try
+{
+    using (var scope = app.Services.CreateScope())
+    {
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        dbContext.Database.Migrate();
+        Console.WriteLine("✅ Database migration completed successfully");
+    }
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"⚠️ Database initialization error: {ex.Message}");
+    // Don't fail startup, log and continue
+}
 
 app.Run();
