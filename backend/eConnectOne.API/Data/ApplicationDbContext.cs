@@ -450,20 +450,33 @@ namespace eConnectOne.API.Data
                 new RolePermission { Id = 3, RoleId = 3, Permission = "TicketManagement", CanView = true, CanCreate = true, CanEdit = true, CanDelete = true, CreatedDate = seedDate, IsDeleted = false },
                 new RolePermission { Id = 4, RoleId = 3, Permission = "AuditLogs", CanView = true, CanCreate = false, CanEdit = false, CanDelete = false, CreatedDate = seedDate, IsDeleted = false },
                 new RolePermission { Id = 5, RoleId = 3, Permission = "SystemSettings", CanView = true, CanCreate = true, CanEdit = true, CanDelete = true, CreatedDate = seedDate, IsDeleted = false },
+                new RolePermission { Id = 14, RoleId = 3, Permission = "BroadcastManagement", CanView = true, CanCreate = true, CanEdit = true, CanDelete = true, CreatedDate = seedDate, IsDeleted = false },
+                new RolePermission { Id = 15, RoleId = 3, Permission = "CommissionManagement", CanView = true, CanCreate = true, CanEdit = true, CanDelete = true, CreatedDate = seedDate, IsDeleted = false },
+                new RolePermission { Id = 16, RoleId = 3, Permission = "Messages", CanView = true, CanCreate = true, CanEdit = true, CanDelete = true, CreatedDate = seedDate, IsDeleted = false },
+                new RolePermission { Id = 17, RoleId = 3, Permission = "ResourceCenter", CanView = true, CanCreate = true, CanEdit = true, CanDelete = true, CreatedDate = seedDate, IsDeleted = false },
+                new RolePermission { Id = 18, RoleId = 3, Permission = "WalletManagement", CanView = true, CanCreate = true, CanEdit = true, CanDelete = true, CreatedDate = seedDate, IsDeleted = false },
                 
                 // Admin - Limited access
                 new RolePermission { Id = 6, RoleId = 1, Permission = "Dashboard", CanView = true, CanCreate = false, CanEdit = false, CanDelete = false, CreatedDate = seedDate, IsDeleted = false },
                 new RolePermission { Id = 7, RoleId = 1, Permission = "UserManagement", CanView = true, CanCreate = true, CanEdit = true, CanDelete = false, CreatedDate = seedDate, IsDeleted = false },
                 new RolePermission { Id = 8, RoleId = 1, Permission = "TicketManagement", CanView = true, CanCreate = true, CanEdit = true, CanDelete = false, CreatedDate = seedDate, IsDeleted = false },
                 new RolePermission { Id = 9, RoleId = 1, Permission = "AuditLogs", CanView = true, CanCreate = false, CanEdit = false, CanDelete = false, CreatedDate = seedDate, IsDeleted = false },
+                new RolePermission { Id = 19, RoleId = 1, Permission = "BroadcastManagement", CanView = true, CanCreate = true, CanEdit = true, CanDelete = false, CreatedDate = seedDate, IsDeleted = false },
+                new RolePermission { Id = 20, RoleId = 1, Permission = "CommissionManagement", CanView = true, CanCreate = true, CanEdit = false, CanDelete = false, CreatedDate = seedDate, IsDeleted = false },
+                new RolePermission { Id = 21, RoleId = 1, Permission = "Messages", CanView = true, CanCreate = true, CanEdit = false, CanDelete = false, CreatedDate = seedDate, IsDeleted = false },
+                new RolePermission { Id = 22, RoleId = 1, Permission = "ResourceCenter", CanView = true, CanCreate = false, CanEdit = false, CanDelete = false, CreatedDate = seedDate, IsDeleted = false },
                 
                 // HO User - Basic access
                 new RolePermission { Id = 10, RoleId = 2, Permission = "Dashboard", CanView = true, CanCreate = false, CanEdit = false, CanDelete = false, CreatedDate = seedDate, IsDeleted = false },
                 new RolePermission { Id = 11, RoleId = 2, Permission = "TicketManagement", CanView = true, CanCreate = true, CanEdit = false, CanDelete = false, CreatedDate = seedDate, IsDeleted = false },
+                new RolePermission { Id = 23, RoleId = 2, Permission = "Messages", CanView = true, CanCreate = true, CanEdit = false, CanDelete = false, CreatedDate = seedDate, IsDeleted = false },
+                new RolePermission { Id = 24, RoleId = 2, Permission = "ResourceCenter", CanView = true, CanCreate = false, CanEdit = false, CanDelete = false, CreatedDate = seedDate, IsDeleted = false },
                 
-                // CSP - Ticket only
+                // CSP - Limited access
                 new RolePermission { Id = 12, RoleId = 4, Permission = "Dashboard", CanView = true, CanCreate = false, CanEdit = false, CanDelete = false, CreatedDate = seedDate, IsDeleted = false },
-                new RolePermission { Id = 13, RoleId = 4, Permission = "TicketManagement", CanView = true, CanCreate = true, CanEdit = false, CanDelete = false, CreatedDate = seedDate, IsDeleted = false }
+                new RolePermission { Id = 13, RoleId = 4, Permission = "TicketManagement", CanView = true, CanCreate = true, CanEdit = false, CanDelete = false, CreatedDate = seedDate, IsDeleted = false },
+                new RolePermission { Id = 25, RoleId = 4, Permission = "Messages", CanView = true, CanCreate = true, CanEdit = false, CanDelete = false, CreatedDate = seedDate, IsDeleted = false },
+                new RolePermission { Id = 26, RoleId = 4, Permission = "ResourceCenter", CanView = true, CanCreate = false, CanEdit = false, CanDelete = false, CreatedDate = seedDate, IsDeleted = false }
             );
 
             // Configure Messaging System Entities

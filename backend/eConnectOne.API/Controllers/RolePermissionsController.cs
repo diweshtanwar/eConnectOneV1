@@ -124,13 +124,19 @@ namespace eConnectOne.API.Controllers
         }
 
         [HttpGet("user-permissions")]
-        [AllowAnonymous]
+        [AllowAnonymous] // Allow all authenticated users
         public async Task<ActionResult<Dictionary<string, object>>> GetUserPermissions()
         {
+            // Check if user is authenticated
+            if (!User.Identity?.IsAuthenticated ?? true)
+            {
+                return Unauthorized(new { message = "User not authenticated" });
+            }
+
             var userIdClaim = User.FindFirst("id")?.Value;
             if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
             {
-                return Unauthorized();
+                return Unauthorized(new { message = "Invalid user ID claim" });
             }
 
             var user = await _context.Users

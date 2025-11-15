@@ -33,12 +33,14 @@ import { Alert as MuiAlert, Box } from '@mui/material';
 import { useAuth } from './contexts/AuthContext';
 import { PWAInstallPrompt } from './components/PWAInstallPrompt';
 import { OfflineIndicator } from './components/OfflineIndicator';
-import { SessionTimer } from './components/SessionTimer';
 import { usePWA } from './hooks/usePWA';
+import { usePermissions } from './hooks/usePermissions';
 import { MyTickets } from './pages/MyTickets';
 import { UserGuideManagement } from './pages/UserGuideManagement';
 import { MyUserGuide } from './pages/MyUserGuide';
 import DemoPage from './pages/DemoPage';
+import { MENU_CONFIG } from './constants/menuConfig.tsx';
+import { filterMenuByPermissions } from './utils/menuFilter';
 
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const token = localStorage.getItem('token');
@@ -51,26 +53,10 @@ const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 const App: React.FC = () => {
   const { user } = useAuth();
   const { isOnline } = usePWA();
-  // Show all menu items (no permission filtering)
-  const menuItems = [
-    { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
-    { text: 'User Management', icon: <SupervisorAccount />, path: '/users' },
-    { text: 'Broadcast Management', icon: <PostAdd />, path: '/broadcast-management' },
-    { text: 'Commission Management', icon: <MonetizationOn />, path: '/commission-management' },
-    { text: 'Audit Logs', icon: <HistoryIcon />, path: '/auditlogs' },
-    { text: 'System Settings', icon: <Settings />, path: '/settings' },
-    { text: 'Ticket Management', icon: <Assignment />, path: '/tickets' },
-    { text: 'My Broadcasts', icon: <Email />, path: '/my-broadcasts' },
-    { text: 'Messages', icon: <Email />, path: '/messages' },
-    { text: 'Resource Center', icon: <Folder />, path: '/resources' },
-    { text: 'Create Ticket', icon: <PostAdd />, path: '/create-ticket' },
-    { text: 'My Wallet', icon: <AccountBalanceWallet />, path: '/wallet' },
-    { text: 'My Tickets', icon: <Assignment />, path: '/my-tickets' },
-    { text: 'My Commissions', icon: <MonetizationOn />, path: '/my-commissions' },
-    { text: 'User Guide Management', icon: <Folder />, path: '/user-guide-management' },
-    { text: 'My User Guide', icon: <Folder />, path: '/my-user-guide' },
-    { text: 'Demo', icon: <DashboardIcon />, path: '/demo' },
-  ];
+  const { permissions } = usePermissions();
+  
+  // Filter menu items based on DB permissions and roles
+  const menuItems = filterMenuByPermissions(MENU_CONFIG, user, permissions);
   return (
     <ThemeProvider>
       <PWAInstallPrompt />
