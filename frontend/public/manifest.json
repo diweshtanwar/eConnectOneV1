@@ -2,14 +2,14 @@
   "name": "eConnectOne Portal",
   "short_name": "eConnectOne",
   "description": "Complete support portal for ticket management and CSP services",
-  "start_url": "/",
+  "start_url": "/eConnectOneV1/",
   "display": "standalone",
   "background_color": "#1976d2",
   "theme_color": "#1976d2",
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/icon.svg",
+      "src": "/eConnectOneV1/icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
