@@ -48,8 +48,8 @@ const getApiBaseUrl = () => {
   
   // Check if we're in production (GitHub Pages)
   if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-    // Production - use Railway backend or your domain
-    return 'https://your-railway-backend-url.railway.app/api';
+    // Production - use Railway backend (update with your actual URL)
+    return 'https://centerbeam.proxy.rlwy.net:57891/api';
   }
   
   // Development - use local backend
