@@ -9,9 +9,18 @@ using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Get database connection string - prefer DATABASE_URL environment variable (Railway)
+var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL")
+    ?? builder.Configuration.GetConnectionString("DefaultConnection");
+
+// Log which connection string is being used
+Console.WriteLine(Environment.GetEnvironmentVariable("DATABASE_URL") != null 
+    ? "✅ Using Railway DATABASE_URL from environment" 
+    : "✅ Using local connection string from appsettings");
+
 // Add services to the container.
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(connectionString));
 
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IUserService, UserService>();
