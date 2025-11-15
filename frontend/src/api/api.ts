@@ -39,10 +39,28 @@ export const auditApi = {
 import axios from 'axios';
 import { apiCache } from '../utils/apiCache';
 
-const API_BASE_URL = 'http://localhost:5001/api';
+// Detect environment and set base URL
+const getApiBaseUrl = () => {
+  // Check for environment variable first (set during build)
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+  
+  // Check if we're in production (GitHub Pages)
+  if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    // Production - use Railway backend or your domain
+    return 'https://your-railway-backend-url.railway.app/api';
+  }
+  
+  // Development - use local backend
+  return 'http://localhost:5001/api';
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 const api = axios.create({
   baseURL: API_BASE_URL,
+  withCredentials: true,
 });
 
 // Add JWT token to requests if available
