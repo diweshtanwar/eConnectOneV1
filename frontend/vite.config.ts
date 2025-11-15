@@ -10,11 +10,7 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}']
-      },
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
+      registerType: 'prompt',
       manifest: {
         name: 'eConnectOne Portal',
         short_name: 'eConnectOne',
@@ -26,13 +22,8 @@ export default defineConfig({
         start_url: '/eConnectOneV1/',
         icons: [
           {
-            src: '/eConnectOneV1/vite.svg',
+            src: 'icon.svg',
             sizes: '192x192',
-            type: 'image/svg+xml'
-          },
-          {
-            src: '/eConnectOneV1/vite.svg',
-            sizes: '512x512',
             type: 'image/svg+xml'
           }
         ]
