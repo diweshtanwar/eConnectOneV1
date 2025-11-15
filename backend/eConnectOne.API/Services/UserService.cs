@@ -1,0 +1,380 @@
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using eConnectOne.API.Data;
+using eConnectOne.API.DTOs;
+using eConnectOne.API.Models;
+using Microsoft.EntityFrameworkCore;
+using BCrypt.Net;
+
+namespace eConnectOne.API.Services
+{
+    public class UserService : IUserService
+    {
+        private readonly ApplicationDbContext _context;
+
+        public UserService(ApplicationDbContext context)
+        {
+            _context = context;
+        }
+
+        public async Task<IEnumerable<UserResponseDto>> GetUsersByRoleAsync(int? roleId = null)
+        {
+            var query = _context.Users.AsQueryable();
+            if (roleId.HasValue)
+            {
+                query = query.Where(u => u.RoleId == roleId.Value);
+            }
+            var users = await query.ToListAsync();
+            var result = new List<UserResponseDto>();
+            foreach (var user in users)
+            {
+                result.Add(await MapUserToResponseDto(user));
+            }
+            return result;
+        }
+
+        private async Task<UserResponseDto> MapUserToResponseDto(User user)
+        {
+            var roleName = await _context.Roles
+                                         .Where(r => r.Id == user.RoleId && !r.IsDeleted)
+                                         .Select(r => r.Name)
+                                         .FirstOrDefaultAsync() ?? "Unknown";
+
+            var responseDto = new UserResponseDto
+            {
+                Id = user.Id,
+                Email = user.Email,
+                FullName = user.FullName,
+                MobileNumber = user.MobileNumber,
+                EmergencyContactNumber = user.EmergencyContactNumber,
+                FatherName = user.FatherName,
+                MotherName = user.MotherName,
+                RoleName = roleName,
+                RoleId = user.RoleId,
+                IsActive = user.IsActive,
+                CreatedAt = user.CreatedAt,
+                LastLoginAt = user.LastLoginAt
+            };
+
+            // Include GeneralUserDetails if applicable
+            if (roleName != "CSP")
+            {
+                var generalDetails = await _context.GeneralUserDetails
+                                                   .Where(g => g.UserId == user.Id)
+                                                   .Select(g => new GeneralUserDetailDto
+                                                   {
+                                                       Id = g.Id,
+                                                       Address = g.Address,
+                                                       Qualification = g.Qualification,
+                                                       ProfilePicSource = g.ProfilePicSource,
+                                                       CityId = g.CityId,
+                                                       StateId = g.StateId,
+                                                       DepartmentId = g.DepartmentId,
+                                                       DesignationId = g.DesignationId
+                                                   })
+                                                   .FirstOrDefaultAsync();
+                responseDto.GeneralDetails = generalDetails;
+            }
+            else if (roleName == "CSP")
+            {
+                var userDetails = await _context.UserDetails
+                                               .Where(c => c.UserId == user.Id)
+                                               .Select(c => new UserDetailDto
+                                               {
+                                                   Id = c.Id,
+                                                   UserId = c.UserId,
+                                                   Name = c.Name,
+                                                   Code = c.Code,
+                                                   BranchCode = c.BranchCode,
+                                                   ExpiryDate = c.ExpiryDate,
+                                                   BankName = c.BankName,
+                                                   BankAccount = c.BankAccount,
+                                                   IFSC = c.IFSC,
+                                                   CertificateStatus = c.CertificateStatus,
+                                                   StatusId = c.StatusId,
+                                                   CountryId = c.CountryId,
+                                                   StateId = c.StateId,
+                                                   CityId = c.CityId,
+                                                   LocationId = c.LocationId,
+                                                   Category = c.Category,
+                                                   PAN = c.PAN,
+                                                   VoterId = c.VoterId,
+                                                   AadharNo = c.AadharNo,
+                                                   Education = c.Education
+                                               })
+                                               .FirstOrDefaultAsync();
+                responseDto.UserDetails = userDetails;
+            }
+
+            return responseDto;
+        }
+
+        public async Task<UserResponseDto> CreateUserAsync(UserCreateDto userDto)
+        {
+            // Always use the provided username, do not overwrite
+            var roleName = await _context.Roles.Where(r => r.Id == userDto.RoleId).Select(r => r.Name).FirstOrDefaultAsync();
+
+            // For CSP, Username = CSPCode (enforced)
+            string username = userDto.Username;
+            string? cspCode = userDto.CSPCode;
+            if (roleName == "CSP")
+            {
+                if (string.IsNullOrWhiteSpace(cspCode))
+                    throw new ArgumentException("Code is required for CSP users.");
+                username = cspCode;
+            }
+
+            var user = new User
+            {
+                Username = username,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(userDto.Password),
+                RoleId = userDto.RoleId,
+                Email = userDto.Email,
+                FullName = userDto.FullName,
+                MobileNumber = userDto.MobileNumber,
+                EmergencyContactNumber = userDto.EmergencyContactNumber,
+                FatherName = userDto.FatherName,
+                MotherName = userDto.MotherName,
+                CreatedAt = DateTime.UtcNow,
+                IsActive = true,
+                IsDeleted = false
+            };
+
+            _context.Users.Add(user);
+            await _context.SaveChangesAsync();
+
+            // Create associated detail record based on role
+            if (roleName == "CSP")
+            {
+                var userDetails = new UserDetails { UserId = user.Id, Code = cspCode!, CreatedDate = DateTime.UtcNow };
+                _context.UserDetails.Add(userDetails);
+            }
+            else
+            {
+                var generalDetails = new GeneralUserDetails { UserId = user.Id, CreatedDate = DateTime.UtcNow };
+                _context.GeneralUserDetails.Add(generalDetails);
+            }
+            await _context.SaveChangesAsync();
+
+            return await MapUserToResponseDto(user);
+        }
+
+        public async Task<UserResponseDto?> GetUserByIdAsync(int id)
+        {
+            var user = await _context.Users
+                                     .Include(u => u.Role)
+                                     .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted);
+
+            if (user == null)
+            {
+                return null;
+            }
+
+            return await MapUserToResponseDto(user);
+        }
+
+        public async Task<IEnumerable<UserResponseDto>> GetAllUsersAsync(int pageNumber, int pageSize, int? currentUserId = null, string? currentUserRole = null)
+        {
+            var query = _context.Users.Where(u => !u.IsDeleted);
+            if (currentUserRole == "CSP" && currentUserId.HasValue)
+            {
+                query = query.Where(u => u.Id == currentUserId.Value);
+            }
+            var users = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .Include(u => u.Role)
+                .ToListAsync();
+            var userResponseDtos = new List<UserResponseDto>();
+            foreach (var user in users)
+            {
+                userResponseDtos.Add(await MapUserToResponseDto(user));
+            }
+            return userResponseDtos;
+        }
+
+        public async Task<UserResponseDto> UpdateUserAsync(int id, UserUpdateDto userDto)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted);
+            if (user == null)
+            {
+                throw new KeyNotFoundException($"User with ID {id} not found.");
+            }
+            // Username removed, do not update
+            if (!string.IsNullOrEmpty(userDto.Password))
+            {
+                user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(userDto.Password);
+            }
+            user.RoleId = userDto.RoleId ?? user.RoleId;
+            user.Email = userDto.Email ?? user.Email;
+            user.FullName = userDto.FullName ?? user.FullName;
+            user.MobileNumber = userDto.MobileNumber ?? user.MobileNumber;
+            user.EmergencyContactNumber = userDto.EmergencyContactNumber ?? user.EmergencyContactNumber;
+            user.FatherName = userDto.FatherName ?? user.FatherName;
+            user.MotherName = userDto.MotherName ?? user.MotherName;
+            user.IsActive = userDto.IsActive ?? user.IsActive;
+            user.UpdatedDate = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+            return await MapUserToResponseDto(user);
+        }
+
+        public async Task<UserResponseDto> UpdateGeneralUserDetailsAsync(int userId, GeneralUserDetailDto detailsDto)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId && !u.IsDeleted);
+            if (user == null)
+            {
+                throw new KeyNotFoundException($"User with ID {userId} not found.");
+            }
+            var generalDetails = await _context.GeneralUserDetails.FirstOrDefaultAsync(g => g.UserId == user.Id && !g.IsDeleted);
+            if (generalDetails == null)
+            {
+                generalDetails = new GeneralUserDetails { UserId = user.Id, CreatedDate = DateTime.UtcNow };
+                _context.GeneralUserDetails.Add(generalDetails);
+            }
+            generalDetails.Address = detailsDto.Address ?? generalDetails.Address;
+            generalDetails.Qualification = detailsDto.Qualification ?? generalDetails.Qualification;
+            generalDetails.ProfilePicSource = detailsDto.ProfilePicSource ?? generalDetails.ProfilePicSource;
+            generalDetails.CityId = detailsDto.CityId ?? generalDetails.CityId;
+            generalDetails.StateId = detailsDto.StateId ?? generalDetails.StateId;
+            generalDetails.DepartmentId = detailsDto.DepartmentId ?? generalDetails.DepartmentId;
+            generalDetails.DesignationId = detailsDto.DesignationId ?? generalDetails.DesignationId;
+            generalDetails.UpdatedDate = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+            return await MapUserToResponseDto(user);
+        }
+
+    public async Task<UserResponseDto> UpdateUserDetailsAsync(int userId, UserDetailDto detailsDto)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId && !u.IsDeleted);
+            if (user == null)
+            {
+                throw new KeyNotFoundException($"User with ID {userId} not found.");
+            }
+            var userDetails = await _context.UserDetails.FirstOrDefaultAsync(c => c.UserId == user.Id && !c.IsDeleted);
+            if (userDetails == null)
+            {
+                userDetails = new UserDetails { UserId = user.Id, CreatedDate = DateTime.UtcNow };
+                _context.UserDetails.Add(userDetails);
+            }
+            userDetails.Name = detailsDto.Name ?? userDetails.Name;
+            userDetails.Code = detailsDto.Code ?? userDetails.Code;
+            userDetails.BranchCode = detailsDto.BranchCode ?? userDetails.BranchCode;
+            userDetails.ExpiryDate = detailsDto.ExpiryDate ?? userDetails.ExpiryDate;
+            userDetails.BankName = detailsDto.BankName ?? userDetails.BankName;
+            userDetails.BankAccount = detailsDto.BankAccount ?? userDetails.BankAccount;
+            userDetails.IFSC = detailsDto.IFSC ?? userDetails.IFSC;
+            userDetails.CertificateStatus = detailsDto.CertificateStatus ?? userDetails.CertificateStatus;
+            userDetails.StatusId = detailsDto.StatusId ?? userDetails.StatusId;
+            userDetails.CountryId = detailsDto.CountryId ?? userDetails.CountryId;
+            userDetails.StateId = detailsDto.StateId ?? userDetails.StateId;
+            userDetails.CityId = detailsDto.CityId ?? userDetails.CityId;
+            userDetails.LocationId = detailsDto.LocationId ?? userDetails.LocationId;
+            userDetails.Category = detailsDto.Category ?? userDetails.Category;
+            userDetails.PAN = detailsDto.PAN ?? userDetails.PAN;
+            userDetails.VoterId = detailsDto.VoterId ?? userDetails.VoterId;
+            userDetails.AadharNo = detailsDto.AadharNo ?? userDetails.AadharNo;
+            userDetails.Education = detailsDto.Education ?? userDetails.Education;
+            userDetails.UpdatedDate = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+            return await MapUserToResponseDto(user);
+        }
+
+        public async Task<bool> SoftDeleteUserAsync(int id)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted);
+            if (user == null)
+            {
+                return false;
+            }
+            user.IsDeleted = true;
+            user.DeletedDate = DateTime.UtcNow;
+            user.UpdatedDate = DateTime.UtcNow;
+            var roleName = await _context.Roles.Where(r => r.Id == user.RoleId).Select(r => r.Name).FirstOrDefaultAsync();
+            if (roleName == "CSP")
+            {
+                var userDetails = await _context.UserDetails.FirstOrDefaultAsync(c => c.UserId == user.Id && !c.IsDeleted);
+                if (userDetails != null)
+                {
+                    userDetails.IsDeleted = true;
+                    userDetails.DeletedDate = DateTime.UtcNow;
+                    userDetails.UpdatedDate = DateTime.UtcNow;
+                    var userDocuments = await _context.UserDocuments.Where(d => d.Code == userDetails.Code && !d.IsDeleted).ToListAsync();
+                    foreach (var doc in userDocuments)
+                    {
+                        doc.IsDeleted = true;
+                        doc.DeletedDate = DateTime.UtcNow;
+                    }
+                }
+            }
+            else
+            {
+                var generalDetails = await _context.GeneralUserDetails.FirstOrDefaultAsync(g => g.UserId == user.Id && !g.IsDeleted);
+                if (generalDetails != null)
+                {
+                    generalDetails.IsDeleted = true;
+                    generalDetails.DeletedDate = DateTime.UtcNow;
+                    generalDetails.UpdatedDate = DateTime.UtcNow;
+                }
+            }
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> RestoreUserAsync(int id)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id && u.IsDeleted);
+            if (user == null)
+            {
+                return false;
+            }
+            user.IsDeleted = false;
+            user.DeletedDate = null;
+            user.UpdatedDate = DateTime.UtcNow;
+            var roleName = await _context.Roles.Where(r => r.Id == user.RoleId).Select(r => r.Name).FirstOrDefaultAsync();
+            if (roleName == "CSP")
+            {
+                var userDetails = await _context.UserDetails.FirstOrDefaultAsync(c => c.UserId == user.Id && c.IsDeleted);
+                if (userDetails != null)
+                {
+                    userDetails.IsDeleted = false;
+                    userDetails.DeletedDate = null;
+                    userDetails.UpdatedDate = DateTime.UtcNow;
+                    var userDocuments = await _context.UserDocuments.Where(d => d.Code == userDetails.Code && d.IsDeleted).ToListAsync();
+                    foreach (var doc in userDocuments)
+                    {
+                        doc.IsDeleted = false;
+                        doc.DeletedDate = null;
+                    }
+                }
+            }
+            else
+            {
+                var generalDetails = await _context.GeneralUserDetails.FirstOrDefaultAsync(g => g.UserId == user.Id && g.IsDeleted);
+                if (generalDetails != null)
+                {
+                    generalDetails.IsDeleted = false;
+                    generalDetails.DeletedDate = null;
+                    generalDetails.UpdatedDate = DateTime.UtcNow;
+                }
+            }
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> ResetPasswordAsync(int userId, string newPassword)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId && !u.IsDeleted);
+            if (user == null)
+            {
+                return false;
+            }
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+            user.UpdatedDate = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+            return true;
+        }
+    }
+}

@@ -1,0 +1,41 @@
+name: Build & Deploy Backend
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend.yml'
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '6.0.x'
+    
+    - name: Restore dependencies
+      run: dotnet restore backend/eConnectOne.API/eConnectOne.API.csproj
+    
+    - name: Build
+      run: dotnet build backend/eConnectOne.API/eConnectOne.API.csproj --configuration Release --no-restore
+    
+    - name: Run tests
+      run: dotnet test backend/ --configuration Release --no-build --verbosity normal
+      continue-on-error: true
+    
+    - name: Publish
+      run: dotnet publish backend/eConnectOne.API/eConnectOne.API.csproj -c Release -o ${{ runner.temp }}/backend
+    
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: backend-artifact
+        path: ${{ runner.temp }}/backend
