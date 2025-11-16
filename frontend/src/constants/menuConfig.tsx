@@ -16,13 +16,7 @@ export const MENU_CONFIG: MenuItem[] = [
     text: 'Dashboard', 
     icon: <DashboardIcon />, 
     path: '/dashboard', 
-    roles: ['Master Admin', 'Admin'] 
-  },
-  { 
-    text: 'Home', 
-    icon: <DashboardIcon />, 
-    path: '/dashboard', 
-    roles: ['HO user', 'CSP'] 
+    roles: ['Master Admin', 'Admin', 'HO user', 'CSP'] 
   },
   { 
     text: 'User Management', 
@@ -67,28 +61,16 @@ export const MENU_CONFIG: MenuItem[] = [
     permission: PERMISSIONS.TICKET_MANAGEMENT 
   },
   { 
-    text: 'My Broadcasts', 
-    icon: <Email />, 
-    path: '/my-broadcasts', 
-    roles: ['Master Admin', 'Admin', 'HO user', 'CSP'] 
-  },
-  { 
     text: 'Messages', 
     icon: <Email />, 
     path: '/messages', 
-    permission: PERMISSIONS.MESSAGES 
+    roles: ['Master Admin', 'Admin', 'HO user', 'CSP'] 
   },
   { 
     text: 'Resource Center', 
     icon: <Folder />, 
     path: '/resources', 
-    permission: PERMISSIONS.RESOURCE_CENTER 
-  },
-  { 
-    text: 'My Resources', 
-    icon: <Folder />, 
-    path: '/my-resources', 
-    roles: ['HO user', 'CSP'] 
+    roles: ['Master Admin', 'Admin'] 
   },
   { 
     text: 'Create Ticket', 
@@ -97,22 +79,34 @@ export const MENU_CONFIG: MenuItem[] = [
     roles: ['Master Admin', 'Admin', 'HO user', 'CSP'] 
   },
   { 
-    text: 'My Wallet', 
-    icon: <AccountBalanceWallet />, 
-    path: '/wallet', 
-    roles: ['CSP'] 
-  },
-  { 
     text: 'My Tickets', 
     icon: <Assignment />, 
     path: '/my-tickets', 
     roles: ['Master Admin', 'Admin', 'HO user', 'CSP'] 
   },
   { 
+    text: 'My Broadcasts', 
+    icon: <Email />, 
+    path: '/my-broadcasts', 
+    roles: ['Master Admin', 'Admin', 'HO user', 'CSP'] 
+  },
+  { 
+    text: 'My Resources', 
+    icon: <Folder />, 
+    path: '/my-resources', 
+    roles: ['HO user', 'CSP'] 
+  },
+  { 
+    text: 'My Wallet', 
+    icon: <AccountBalanceWallet />, 
+    path: '/wallet', 
+    roles: ['HO user', 'CSP'] 
+  },
+  { 
     text: 'My Commissions', 
     icon: <MonetizationOn />, 
     path: '/my-commissions', 
-    roles: ['CSP'] 
+    roles: ['HO user', 'CSP'] 
   },
   { 
     text: 'User Guide Management', 

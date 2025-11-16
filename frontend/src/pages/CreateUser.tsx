@@ -236,7 +236,7 @@ export const CreateUser: React.FC = () => {
           <Button 
             onClick={() => {
               setSuccessDialogOpen(false);
-              navigate('/user-management');
+              navigate('/users');
             }} 
             variant="contained" 
             color="primary"
