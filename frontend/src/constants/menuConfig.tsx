@@ -61,12 +61,6 @@ export const MENU_CONFIG: MenuItem[] = [
     permission: PERMISSIONS.TICKET_MANAGEMENT 
   },
   { 
-    text: 'Messages', 
-    icon: <Email />, 
-    path: '/messages', 
-    roles: ['Master Admin', 'Admin', 'HO user', 'CSP'] 
-  },
-  { 
     text: 'Resource Center', 
     icon: <Folder />, 
     path: '/resources', 
@@ -124,6 +118,12 @@ export const MENU_CONFIG: MenuItem[] = [
     text: 'Demo', 
     icon: <DashboardIcon />, 
     path: '/demo', 
+    roles: ['Master Admin', 'Admin'] 
+  },
+  { 
+    text: 'Messages', 
+    icon: <Email />, 
+    path: '/messages', 
     roles: ['Master Admin', 'Admin'] 
   },
 ];

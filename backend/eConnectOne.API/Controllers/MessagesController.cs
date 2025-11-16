@@ -74,54 +74,103 @@ namespace eConnectOne.API.Controllers
         {
             var userId = GetCurrentUserId();
             
-            // Prevent sending message to self
-            if (dto.ToUserId == userId)
+            try
             {
-                return BadRequest(new { message = "You cannot send a message to yourself" });
-            }
-            
-            // Validate recipient exists
-            var recipientExists = await _context.Users.AnyAsync(u => u.Id == dto.ToUserId && !u.IsDeleted);
-            if (!recipientExists)
-            {
-                return BadRequest(new { message = "Recipient user not found" });
-            }
-            
-            var message = new Message
-            {
-                FromUserId = userId,
-                ToUserId = dto.ToUserId,
-                Subject = dto.Subject,
-                Body = dto.Body,
-                Priority = dto.Priority ?? "Normal"
-            };
+                // Prevent sending message to self
+                if (dto.ToUserId == userId)
+                {
+                    await LogAuditAsync(userId, "MessageSendFailed", "Message", "0", $"Attempted to send message to self");
+                    return BadRequest(new { message = "You cannot send a message to yourself" });
+                }
+                
+                // Validate recipient exists
+                var recipientExists = await _context.Users.AnyAsync(u => u.Id == dto.ToUserId && !u.IsDeleted);
+                if (!recipientExists)
+                {
+                    await LogAuditAsync(userId, "MessageSendFailed", "Message", "0", $"Recipient user {dto.ToUserId} not found");
+                    return BadRequest(new { message = "Recipient user not found" });
+                }
+                
+                var message = new Message
+                {
+                    FromUserId = userId,
+                    ToUserId = dto.ToUserId,
+                    Subject = dto.Subject,
+                    Body = dto.Body,
+                    Priority = dto.Priority ?? "Normal"
+                };
 
-            _context.Messages.Add(message);
-            await _context.SaveChangesAsync();
+                _context.Messages.Add(message);
+                await _context.SaveChangesAsync();
 
-            return Ok(new { message = "Message sent successfully", id = message.Id });
+                await LogAuditAsync(userId, "MessageSent", "Message", message.Id.ToString(), $"Sent message to user {dto.ToUserId}: {dto.Subject}");
+                return Ok(new { message = "Message sent successfully", id = message.Id });
+            }
+            catch (Exception ex)
+            {
+                await LogAuditAsync(userId, "MessageSendError", "Message", "0", $"Error sending message: {ex.Message}");
+                return StatusCode(500, new { message = "An error occurred while sending the message" });
+            }
         }
 
         [HttpPut("{id}/read")]
         public async Task<ActionResult> MarkAsRead(int id)
         {
             var userId = GetCurrentUserId();
-            // Only allow marking as read if message was sent TO this user
-            var message = await _context.Messages.FirstOrDefaultAsync(m => m.Id == id && m.ToUserId == userId);
             
-            if (message == null) return NotFound("Message not found or access denied");
+            try
+            {
+                // Only allow marking as read if message was sent TO this user
+                var message = await _context.Messages.FirstOrDefaultAsync(m => m.Id == id && m.ToUserId == userId);
+                
+                if (message == null)
+                {
+                    await LogAuditAsync(userId, "MessageReadFailed", "Message", id.ToString(), "Message not found or access denied");
+                    return NotFound("Message not found or access denied");
+                }
 
-            message.IsRead = true;
-            message.ReadAt = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
+                message.IsRead = true;
+                message.ReadAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
 
-            return Ok();
+                await LogAuditAsync(userId, "MessageRead", "Message", id.ToString(), $"Marked message as read");
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                await LogAuditAsync(userId, "MessageReadError", "Message", id.ToString(), $"Error marking message as read: {ex.Message}");
+                return StatusCode(500, new { message = "An error occurred" });
+            }
         }
 
         private int GetCurrentUserId()
         {
             var userIdClaim = User.FindFirst("id")?.Value;
             return int.TryParse(userIdClaim, out var userId) ? userId : 1;
+        }
+
+        private async Task LogAuditAsync(int userId, string action, string entityType, string entityId, string details)
+        {
+            try
+            {
+                var auditLog = new AuditLog
+                {
+                    UserId = userId,
+                    Action = action,
+                    EntityType = entityType,
+                    EntityId = entityId,
+                    NewValue = details,
+                    Timestamp = DateTime.UtcNow,
+                    IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString()
+                };
+                _context.AuditLogs.Add(auditLog);
+                await _context.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                // Log to console if audit logging fails
+                Console.WriteLine($"Audit log failed: {ex.Message}");
+            }
         }
     }
 

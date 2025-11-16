@@ -3,6 +3,8 @@ using eConnectOne.API.Models;
 using eConnectOne.API.DTOs;
 using Microsoft.EntityFrameworkCore;
 
+namespace eConnectOne.API.Services
+{
     public interface IEnhancedAuditLogService
     {
         Task LogAsync(string action, string entityType, string entityId, object? oldValue, object? newValue, int userId, string? ipAddress = null);
@@ -29,7 +31,7 @@ using Microsoft.EntityFrameworkCore;
                 {
                     Action = action,
                     EntityType = entityType,
-                    EntityId = entityId,
+                    EntityId = entityId ?? "0",
                     OldValue = oldValue != null ? System.Text.Json.JsonSerializer.Serialize(oldValue) : null,
                     NewValue = newValue != null ? System.Text.Json.JsonSerializer.Serialize(newValue) : null,
                     UserId = userId,
@@ -88,4 +90,60 @@ using Microsoft.EntityFrameworkCore;
             }
         }
     }
-// Duplicate class removed. Only one EnhancedAuditLogService remains, implementing all required methods.
+    public class AuditLogService : IAuditLogService
+    {
+        private readonly ApplicationDbContext _context;
+
+        public AuditLogService(ApplicationDbContext context)
+        {
+            _context = context;
+        }
+
+        public async Task<IEnumerable<AuditLogDto>> GetAllAuditLogsAsync()
+        {
+            var logs = await _context.AuditLogs
+                .Include(a => a.User)
+                .OrderByDescending(a => a.Timestamp)
+                .ToListAsync();
+
+            return logs.Select(a => new AuditLogDto
+            {
+                Id = a.Id,
+                Action = a.Action,
+                EntityName = a.EntityType,
+                EntityId = int.TryParse(a.EntityId, out var eid) ? eid : (int?)null,
+                Changes = a.NewValue ?? a.OldValue,
+                ChangedBy = a.User != null ? a.User.Username : "System",
+                Timestamp = a.Timestamp
+            }).ToList();
+        }
+
+        public async Task<AuditLogDto?> GetAuditLogByIdAsync(int id)
+        {
+            var log = await _context.AuditLogs
+                .Include(a => a.User)
+                .FirstOrDefaultAsync(a => a.Id == id);
+
+            if (log == null) return null;
+
+            return new AuditLogDto
+            {
+                Id = log.Id,
+                Action = log.Action,
+                EntityName = log.EntityType,
+                EntityId = int.TryParse(log.EntityId, out var eid) ? eid : (int?)null,
+                Changes = log.NewValue ?? log.OldValue,
+                ChangedBy = log.User != null ? log.User.Username : "System",
+                Timestamp = log.Timestamp
+            };
+        }
+
+        public async Task<bool> CleanAuditLogsBeforeDateAsync(DateTime cutoffDate)
+        {
+            var oldLogs = _context.AuditLogs.Where(l => l.Timestamp < cutoffDate);
+            _context.AuditLogs.RemoveRange(oldLogs);
+            var count = await _context.SaveChangesAsync();
+            return count > 0;
+        }
+    }
+}

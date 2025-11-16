@@ -19,7 +19,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IRoleService, RoleService>();
-// Original audit log service already registered above
+builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 
 
 // Register new Ticket Management Services

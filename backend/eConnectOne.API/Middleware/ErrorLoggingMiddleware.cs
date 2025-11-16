@@ -32,7 +32,7 @@ namespace eConnectOne.API.Middleware
                 await auditLogService.LogAsync(
                     action: "Exception",
                     entityType: "Global",
-                    entityId: null,
+                    entityId: "0",
                     oldValue: null,
                     newValue: ex.ToString(),
                     userId: userId ?? 0,
