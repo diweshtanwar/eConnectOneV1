@@ -1,17 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Grid, Card, CardContent, CardActions, Button, Chip, TextField, MenuItem, InputAdornment, Fab, Dialog, DialogTitle, DialogContent, DialogActions, ToggleButtonGroup, ToggleButton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from '@mui/material';
-import { Search, Add, OpenInNew, Download, Visibility, Star, Folder, Description, VideoLibrary, Link, ViewModule, ViewList } from '@mui/icons-material';
+import { Box, Typography, Grid, Card, CardContent, CardActions, Button, Chip, TextField, InputAdornment, ToggleButtonGroup, ToggleButton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from '@mui/material';
+import { Search, OpenInNew, Download, Visibility, Star, Folder, Description, VideoLibrary, Link, ViewModule, ViewList } from '@mui/icons-material';
 import { resourceCenterApi } from '../api/api';
-import { useAuth } from '../contexts/AuthContext';
-
-interface Category {
-  id: number;
-  name: string;
-  description: string;
-  icon: string;
-  color: string;
-  resourceCount: number;
-}
 
 interface Resource {
   id: number;
@@ -30,51 +20,26 @@ interface Resource {
   uploadedBy: string;
 }
 
-export const ResourceCenter: React.FC = () => {
-  const { user } = useAuth();
-  const [categories, setCategories] = useState<Category[]>([]);
+export const MyResources: React.FC = () => {
   const [resources, setResources] = useState<Resource[]>([]);
   const [featuredResources, setFeaturedResources] = useState<Resource[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [newResource, setNewResource] = useState({
-    title: '',
-    description: '',
-    resourceType: 'Link',
-    externalUrl: '',
-    categoryId: '',
-    priority: 'Medium',
-    isFeatured: false
-  });
-  const [newCategory, setNewCategory] = useState({ name: '', description: '' });
-  const [activeTab, setActiveTab] = useState('resource');
   const [viewMode, setViewMode] = useState<'tile' | 'list'>('tile');
 
   useEffect(() => {
-    fetchCategories();
     fetchFeaturedResources();
     fetchResources();
   }, []);
 
   useEffect(() => {
     fetchResources();
-  }, [selectedCategory, searchTerm]);
-
-  const fetchCategories = async () => {
-    try {
-      const data = await resourceCenterApi.getCategories();
-      setCategories(data);
-    } catch (error) {
-      console.error('Failed to fetch categories:', error);
-    }
-  };
+  }, [searchTerm]);
 
   const fetchResources = async () => {
     try {
       setLoading(true);
-      const data = await resourceCenterApi.getResources(selectedCategory, searchTerm);
+      const data = await resourceCenterApi.getResources(null, searchTerm);
       setResources(data);
     } catch (error) {
       console.error('Failed to fetch resources:', error);
@@ -100,7 +65,6 @@ export const ResourceCenter: React.FC = () => {
         window.open(resource.externalUrl, '_blank');
       }
       
-      // Update local counts
       setResources(prev => prev.map(r => 
         r.id === resource.id 
           ? { ...r, [accessType.toLowerCase() + 'Count']: r[accessType.toLowerCase() + 'Count' as keyof Resource] as number + 1 }
@@ -128,61 +92,14 @@ export const ResourceCenter: React.FC = () => {
     }
   };
 
-  const isAdmin = user?.roleName === 'Admin' || user?.roleName === 'Master Admin';
-
-  const handleCreateResource = async () => {
-    try {
-      await resourceCenterApi.createResource({
-        ...newResource,
-        categoryId: parseInt(newResource.categoryId)
-      });
-      setCreateDialogOpen(false);
-      setNewResource({
-        title: '',
-        description: '',
-        resourceType: 'Link',
-        externalUrl: '',
-        categoryId: '',
-        priority: 'Medium',
-        isFeatured: false
-      });
-      fetchResources();
-      fetchFeaturedResources();
-    } catch (error) {
-      console.error('Failed to create resource:', error);
-    }
-  };
-
-  const handleCreateCategory = async () => {
-    try {
-      await resourceCenterApi.createCategory(newCategory);
-      setCreateDialogOpen(false);
-      setNewCategory({ name: '', description: '' });
-      fetchCategories();
-    } catch (error) {
-      console.error('Failed to create category:', error);
-    }
-  };
-
   return (
     <Box sx={{ p: 3 }}>
       {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Box>
-          <Typography variant="h4" gutterBottom>Resource Center</Typography>
-          <Typography variant="body1" color="text.secondary">
-            Access training materials, software, and helpful resources
-          </Typography>
-        </Box>
-        {isAdmin && (
-          <Button
-            variant="outlined"
-            startIcon={<Add />}
-            onClick={() => setCreateDialogOpen(true)}
-          >
-            Manage Resources
-          </Button>
-        )}
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="h4" gutterBottom>My Resources</Typography>
+        <Typography variant="body1" color="text.secondary">
+          Access training materials, documents, and helpful resources
+        </Typography>
       </Box>
 
       {/* Search and View Toggle */}
@@ -201,19 +118,19 @@ export const ResourceCenter: React.FC = () => {
           </ToggleButton>
         </ToggleButtonGroup>
         <TextField
-        fullWidth
-        placeholder="Search resources..."
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-        InputProps={{
-          startAdornment: (
-            <InputAdornment position="start">
-              <Search />
-            </InputAdornment>
-          ),
-        }}
-        sx={{ flexGrow: 1 }}
-      />
+          fullWidth
+          placeholder="Search resources..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <Search />
+              </InputAdornment>
+            ),
+          }}
+          sx={{ flexGrow: 1 }}
+        />
       </Box>
 
       {/* Featured Resources */}
@@ -247,6 +164,15 @@ export const ResourceCenter: React.FC = () => {
                     >
                       Open
                     </Button>
+                    {resource.fileName && (
+                      <Button 
+                        size="small" 
+                        startIcon={<Download />}
+                        onClick={() => handleResourceAccess(resource, 'Download')}
+                      >
+                        Download
+                      </Button>
+                    )}
                   </CardActions>
                 </Card>
               </Grid>
@@ -254,31 +180,6 @@ export const ResourceCenter: React.FC = () => {
           </Grid>
         </Box>
       )}
-
-      {/* Categories */}
-      <Box sx={{ mb: 3 }}>
-        <Typography variant="h6" gutterBottom>Categories</Typography>
-        <Grid container spacing={2}>
-          <Grid item>
-            <Chip
-              label="All Categories"
-              onClick={() => setSelectedCategory(null)}
-              color={selectedCategory === null ? 'primary' : 'default'}
-              variant={selectedCategory === null ? 'filled' : 'outlined'}
-            />
-          </Grid>
-          {categories.map((category) => (
-            <Grid item key={category.id}>
-              <Chip
-                label={`${category.name} (${category.resourceCount})`}
-                onClick={() => setSelectedCategory(category.id)}
-                color={selectedCategory === category.id ? 'primary' : 'default'}
-                variant={selectedCategory === category.id ? 'filled' : 'outlined'}
-              />
-            </Grid>
-          ))}
-        </Grid>
-      </Box>
 
       {/* Resources */}
       {viewMode === 'tile' ? (
@@ -357,7 +258,6 @@ export const ResourceCenter: React.FC = () => {
                 <TableCell>Priority</TableCell>
                 <TableCell>Views</TableCell>
                 <TableCell>Downloads</TableCell>
-                <TableCell>Uploaded By</TableCell>
                 <TableCell>Date</TableCell>
                 <TableCell>Actions</TableCell>
               </TableRow>
@@ -379,7 +279,6 @@ export const ResourceCenter: React.FC = () => {
                   </TableCell>
                   <TableCell>{resource.viewCount}</TableCell>
                   <TableCell>{resource.downloadCount}</TableCell>
-                  <TableCell>{resource.uploadedBy}</TableCell>
                   <TableCell>{new Date(resource.createdAt).toLocaleDateString()}</TableCell>
                   <TableCell>
                     <Box sx={{ display: 'flex', gap: 1 }}>
@@ -414,148 +313,10 @@ export const ResourceCenter: React.FC = () => {
             No resources found
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Try adjusting your search or category filter
+            Try adjusting your search
           </Typography>
         </Box>
       )}
-
-      {/* Management Dialog */}
-      <Dialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle>
-          Manage Resources
-        </DialogTitle>
-        <DialogContent>
-          <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
-            <Button 
-              onClick={() => setActiveTab('resource')} 
-              color={activeTab === 'resource' ? 'primary' : 'inherit'}
-            >
-              Add Resource
-            </Button>
-            <Button 
-              onClick={() => setActiveTab('category')} 
-              color={activeTab === 'category' ? 'primary' : 'inherit'}
-            >
-              Add Category
-            </Button>
-          </Box>
-
-          {activeTab === 'resource' && (
-            <Grid container spacing={2}>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Title"
-                  value={newResource.title}
-                  onChange={(e) => setNewResource({...newResource, title: e.target.value})}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Description"
-                  multiline
-                  rows={3}
-                  value={newResource.description}
-                  onChange={(e) => setNewResource({...newResource, description: e.target.value})}
-                />
-              </Grid>
-              <Grid item xs={6}>
-                <TextField
-                  fullWidth
-                  select
-                  label="Type"
-                  value={newResource.resourceType}
-                  onChange={(e) => setNewResource({...newResource, resourceType: e.target.value})}
-                >
-                  <MenuItem value="Link">External Link</MenuItem>
-                  <MenuItem value="Document">Document</MenuItem>
-                  <MenuItem value="Video">Video</MenuItem>
-                  <MenuItem value="File">File</MenuItem>
-                </TextField>
-              </Grid>
-              <Grid item xs={6}>
-                <TextField
-                  fullWidth
-                  select
-                  label="Category"
-                  value={newResource.categoryId}
-                  onChange={(e) => setNewResource({...newResource, categoryId: e.target.value})}
-                >
-                  {categories.map((cat) => (
-                    <MenuItem key={cat.id} value={cat.id}>{cat.name}</MenuItem>
-                  ))}
-                </TextField>
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="External URL"
-                  value={newResource.externalUrl}
-                  onChange={(e) => setNewResource({...newResource, externalUrl: e.target.value})}
-                  placeholder="https://example.com"
-                />
-              </Grid>
-              <Grid item xs={6}>
-                <TextField
-                  fullWidth
-                  select
-                  label="Priority"
-                  value={newResource.priority}
-                  onChange={(e) => setNewResource({...newResource, priority: e.target.value})}
-                >
-                  <MenuItem value="Low">Low</MenuItem>
-                  <MenuItem value="Medium">Medium</MenuItem>
-                  <MenuItem value="High">High</MenuItem>
-                </TextField>
-              </Grid>
-              <Grid item xs={6}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 2 }}>
-                  <input
-                    type="checkbox"
-                    checked={newResource.isFeatured}
-                    onChange={(e) => setNewResource({...newResource, isFeatured: e.target.checked})}
-                  />
-                  <Typography>Featured Resource</Typography>
-                </Box>
-              </Grid>
-            </Grid>
-          )}
-
-          {activeTab === 'category' && (
-            <Grid container spacing={2}>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Category Name"
-                  value={newCategory.name}
-                  onChange={(e) => setNewCategory({...newCategory, name: e.target.value})}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Description"
-                  multiline
-                  rows={3}
-                  value={newCategory.description}
-                  onChange={(e) => setNewCategory({...newCategory, description: e.target.value})}
-                />
-              </Grid>
-            </Grid>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
-          <Button 
-            onClick={activeTab === 'resource' ? handleCreateResource : handleCreateCategory}
-            variant="contained"
-            disabled={activeTab === 'resource' ? !newResource.title : !newCategory.name}
-          >
-            Create {activeTab === 'resource' ? 'Resource' : 'Category'}
-          </Button>
-        </DialogActions>
-      </Dialog>
     </Box>
   );
 };

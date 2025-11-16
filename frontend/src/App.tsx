@@ -18,6 +18,7 @@ import { TicketDetails } from './pages/TicketDetails';
 import { Communications } from './pages/Communications';
 import { Messages } from './pages/Messages';
 import { ResourceCenter } from './pages/ResourceCenter';
+import { MyResources } from './pages/MyResources';
 
 // New imports for Wallet and Commission Management
 import { Wallet } from './pages/Wallet';
@@ -263,6 +264,16 @@ const App: React.FC = () => {
             <PrivateRoute>
               <Layout menuItems={menuItems} title="Solution Demo">
                 <DemoPage />
+              </Layout>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/my-resources"
+          element={
+            <PrivateRoute>
+              <Layout menuItems={menuItems} title="My Resources">
+                <MyResources />
               </Layout>
             </PrivateRoute>
           }

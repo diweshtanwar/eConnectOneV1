@@ -267,10 +267,13 @@ const DemoPage: React.FC = () => {
   return (
     <Box sx={{ maxWidth: 900, mx: 'auto', p: 4 }}>
       <Typography variant="h3" gutterBottom color="primary">
-        🚀 Solution Demo & Technical Overview
+        🚀 eConnectOne Solution Demo & Technical Overview
       </Typography>
       <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 500 }}>
-        Explore the power, flexibility, and value of our platform. Each section highlights a key feature, benefit, or technical strength—designed to impress and inform.
+        Welcome to the comprehensive demo of eConnectOne - a modern, full-stack business management solution. This page showcases all features, technical capabilities, and business value. Each section highlights key functionality designed to streamline operations, enhance productivity, and deliver measurable ROI.
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2, fontStyle: 'italic' }}>
+        Note: This demo page is accessible to Master Admin and Admin users only. For hands-on experience, navigate through the actual features using the side menu.
       </Typography>
       <Divider sx={{ my: 3 }} />
       <Paper elevation={3} sx={{ p: 3, background: theme.palette.background.default }}>

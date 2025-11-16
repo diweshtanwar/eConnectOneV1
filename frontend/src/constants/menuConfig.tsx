@@ -16,7 +16,13 @@ export const MENU_CONFIG: MenuItem[] = [
     text: 'Dashboard', 
     icon: <DashboardIcon />, 
     path: '/dashboard', 
-    permission: PERMISSIONS.DASHBOARD 
+    roles: ['Master Admin', 'Admin'] 
+  },
+  { 
+    text: 'Home', 
+    icon: <DashboardIcon />, 
+    path: '/dashboard', 
+    roles: ['HO user', 'CSP'] 
   },
   { 
     text: 'User Management', 
@@ -79,6 +85,12 @@ export const MENU_CONFIG: MenuItem[] = [
     permission: PERMISSIONS.RESOURCE_CENTER 
   },
   { 
+    text: 'My Resources', 
+    icon: <Folder />, 
+    path: '/my-resources', 
+    roles: ['HO user', 'CSP'] 
+  },
+  { 
     text: 'Create Ticket', 
     icon: <PostAdd />, 
     path: '/create-ticket', 
@@ -118,6 +130,6 @@ export const MENU_CONFIG: MenuItem[] = [
     text: 'Demo', 
     icon: <DashboardIcon />, 
     path: '/demo', 
-    roles: ['Master Admin', 'Admin', 'HO user', 'CSP'] 
+    roles: ['Master Admin', 'Admin'] 
   },
 ];
