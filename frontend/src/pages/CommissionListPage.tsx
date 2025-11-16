@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import {
-  Box, FormControl, InputLabel, Select, MenuItem, Alert, TableContainer, Paper, Table, TableHead, TableRow, TableCell, TableBody, Chip, Typography, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton
+  Box, FormControl, InputLabel, Select, MenuItem, Alert, TableContainer, Paper, Table, TableHead, TableRow, TableCell, TableBody, Chip, Typography, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton, ToggleButtonGroup, ToggleButton, Card, CardContent, Grid
 } from '@mui/material';
-import { Edit, Delete, CheckCircle } from '@mui/icons-material';
+import { Edit, Delete, CheckCircle, ViewModule, ViewList } from '@mui/icons-material';
 import { commissionApi } from '../api/api';
 
 interface CommissionListPageProps {
@@ -36,6 +36,7 @@ const CommissionListPage: React.FC<CommissionListPageProps> = ({
   const [editData, setEditData] = useState<any>({});
   const [approveData, setApproveData] = useState({ status: 'APPROVED', remarks: '' });
   const [message, setMessage] = useState('');
+  const [viewMode, setViewMode] = useState<'tile' | 'list'>('list');
 
   const handleEdit = (commission: any) => {
     setSelectedCommission(commission);
@@ -95,7 +96,20 @@ const CommissionListPage: React.FC<CommissionListPageProps> = ({
 
   return (
     <>
-      <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 2 }}>
+      <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 2, flexWrap: 'wrap' }}>
+        <ToggleButtonGroup
+          value={viewMode}
+          exclusive
+          onChange={(_, newMode) => newMode && setViewMode(newMode)}
+          size="small"
+        >
+          <ToggleButton value="tile">
+            <ViewModule />
+          </ToggleButton>
+          <ToggleButton value="list">
+            <ViewList />
+          </ToggleButton>
+        </ToggleButtonGroup>
         <FormControl size="small" sx={{ minWidth: 120 }}>
           <InputLabel>Year</InputLabel>
           <Select
@@ -132,6 +146,41 @@ const CommissionListPage: React.FC<CommissionListPageProps> = ({
         <Alert severity="info">
           No commissions found for {selectedYear}. {(user?.role === 'Master Admin' || user?.role === 'Admin') && 'Click "Create Commission" to add new commission records.'}
         </Alert>
+      ) : viewMode === 'tile' ? (
+        <Grid container spacing={2}>
+          {commissions.map((commission) => (
+            <Grid item xs={12} sm={6} md={4} key={commission.commissionId}>
+              <Card variant="outlined">
+                <CardContent>
+                  <Box sx={{ mb: 2 }}>
+                    <Typography variant="body1" fontWeight="bold">
+                      {commission.cspUser?.fullName || 'N/A'}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {commission.cspUser?.username || 'N/A'}
+                    </Typography>
+                  </Box>
+                  <Typography variant="body2" color="text.secondary">
+                    {getMonthName(commission.month)} {commission.year}
+                  </Typography>
+                  <Box sx={{ my: 2 }}>
+                    <Typography variant="caption" color="text.secondary">Base: ₹{commission.baseCommission}</Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ ml: 2 }}>Bonus: ₹{commission.bonusCommission}</Typography>
+                    <Typography variant="h6" color="primary.main" sx={{ mt: 1 }}>Net: ₹{commission.netPayable}</Typography>
+                  </Box>
+                  <Chip label={commission.status} color={getStatusColor(commission.status)} size="small" sx={{ mb: 2 }} />
+                  {user?.roleName === 'Master Admin' && (
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <Button size="small" variant="outlined" startIcon={<Edit />} onClick={() => handleEdit(commission)} fullWidth>Edit</Button>
+                      <Button size="small" variant="outlined" color="error" startIcon={<Delete />} onClick={() => handleDelete(commission.commissionId)} fullWidth>Delete</Button>
+                      <Button size="small" variant="outlined" color="success" startIcon={<CheckCircle />} onClick={() => handleApprove(commission)} fullWidth>Approve</Button>
+                    </Box>
+                  )}
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
       ) : (
         <TableContainer component={Paper}>
           <Table>

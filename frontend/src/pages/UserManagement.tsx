@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Paper, Table, TableHead, TableRow, TableCell, TableBody, Button, Chip, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Alert, Collapse } from '@mui/material';
-import { Edit, Delete, Visibility, Folder, Upload, Info, KeyboardArrowDown, KeyboardArrowUp, Download } from '@mui/icons-material';
+import { Box, Typography, Paper, Table, TableHead, TableRow, TableCell, TableBody, Button, Chip, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Alert, Collapse, ToggleButtonGroup, ToggleButton, Card, CardContent, Grid } from '@mui/material';
+import { Edit, Delete, Visibility, Folder, Upload, Info, KeyboardArrowDown, KeyboardArrowUp, Download, ViewModule, ViewList, Person } from '@mui/icons-material';
 import { userApi, type UserResponseDto, type UserFullDetailsDto } from '../api/api';
 import { DataFilters, type FilterOption, type FilterValues } from '../components/DataFilters';
 import { useAuth } from '../contexts/AuthContext';
@@ -27,6 +27,7 @@ export const UserManagement: React.FC = () => {
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserResponseDto | null>(null);
+  const [viewMode, setViewMode] = useState<'tile' | 'list'>('list');
 
   const userFilters: FilterOption[] = [
     { key: 'search', label: 'Search', type: 'text' },
@@ -178,7 +179,20 @@ export const UserManagement: React.FC = () => {
 
   return (
     <Box>
-      <Box sx={{ mb: 2, display: 'flex', gap: 2 }}>
+      <Box sx={{ mb: 2, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+        <ToggleButtonGroup
+          value={viewMode}
+          exclusive
+          onChange={(_, newMode) => newMode && setViewMode(newMode)}
+          size="small"
+        >
+          <ToggleButton value="tile">
+            <ViewModule />
+          </ToggleButton>
+          <ToggleButton value="list">
+            <ViewList />
+          </ToggleButton>
+        </ToggleButtonGroup>
         <Button
           variant={!showFullDetails ? 'contained' : 'outlined'}
           onClick={() => { setShowFullDetails(false); fetchUsers(); }}
@@ -209,7 +223,62 @@ export const UserManagement: React.FC = () => {
         searchMode={true}
       />
 
-      <Paper>
+      {viewMode === 'tile' && !showFullDetails ? (
+        <Grid container spacing={2}>
+          {getFilteredUsers().map((user) => (
+            <Grid item xs={12} sm={6} md={4} key={user.id}>
+              <Card variant="outlined">
+                <CardContent>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                    <Person />
+                    <Box>
+                      <Typography variant="body1" fontWeight="bold">
+                        {user.fullName || user.username}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {user.username}
+                      </Typography>
+                    </Box>
+                  </Box>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                    {user.email || '-'}
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+                    <Chip label={user.roleName} size="small" />
+                    <Chip 
+                      label={user.isActive ? 'Active' : 'Inactive'} 
+                      color={user.isActive ? 'success' : 'error'}
+                      size="small"
+                    />
+                  </Box>
+                  <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 2 }}>
+                    Created: {new Date(user.createdAt).toLocaleDateString()}
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <IconButton size="small" color="info" onClick={() => { setSelectedUser(user); setViewDialogOpen(true); }}>
+                      <Visibility fontSize="small" />
+                    </IconButton>
+                    <IconButton size="small" color="primary" onClick={() => { setSelectedUser(user); setEditDialogOpen(true); }}>
+                      <Edit fontSize="small" />
+                    </IconButton>
+                    <IconButton 
+                      size="small" 
+                      color="error"
+                      onClick={() => {
+                        setSelectedUserId(user.id);
+                        setDeleteDialogOpen(true);
+                      }}
+                    >
+                      <Delete fontSize="small" />
+                    </IconButton>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      ) : (
+        <Paper>
         <Table>
           <TableHead>
             <TableRow>
@@ -379,7 +448,8 @@ export const UserManagement: React.FC = () => {
             ))}
           </TableBody>
         </Table>
-      </Paper>
+        </Paper>
+      )}
 
       <UserViewDialog open={viewDialogOpen} user={selectedUser} onClose={() => setViewDialogOpen(false)} />
       <UserEditDialog open={editDialogOpen} user={selectedUser} onClose={() => setEditDialogOpen(false)} onSave={() => fetchUsers()} />

@@ -12,11 +12,11 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        //target: 'http://localhost:5001',
+       // target: 'http://localhost:5001',
         // Use Railway backend if VITE_USE_RAILWAY=true, otherwise use local
       target: process.env.VITE_USE_RAILWAY === 'true' 
-        ? 'https://econnectonev1-production.up.railway.app'          
-       : 'http://localhost:5001',
+       ? 'https://econnectonev1-production.up.railway.app'          
+      : 'http://localhost:5001',
         changeOrigin: true,
         secure: false
       }

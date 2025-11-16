@@ -3,9 +3,9 @@ import {
   Box, Card, CardContent, Typography, Button, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, Paper, Dialog, DialogTitle, DialogContent,
   DialogActions, TextField, MenuItem, Alert, Grid, Chip, IconButton, Checkbox,
-  FormControlLabel, Divider, Pagination, FormControl, InputLabel, Select
+  FormControlLabel, Divider, Pagination, FormControl, InputLabel, Select, ToggleButtonGroup, ToggleButton
 } from '@mui/material';
-import { Add, Edit, AccountBalanceWallet, Person, Upload, Download } from '@mui/icons-material';
+import { Add, Edit, AccountBalanceWallet, Person, Upload, Download, ViewModule, ViewList } from '@mui/icons-material';
 import { userApi, walletApi, riskManagementApi } from '../api/api';
 
 interface User {
@@ -62,6 +62,7 @@ export const WalletManagement: React.FC = () => {
     minimumBalance: -5000
   });
   const [message, setMessage] = useState('');
+  const [viewMode, setViewMode] = useState<'tile' | 'list'>('list');
 
   useEffect(() => {
     fetchData();
@@ -243,8 +244,21 @@ export const WalletManagement: React.FC = () => {
           Wallet Management
         </Typography>
         
-        {/* Filters */}
-        <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
+        {/* Filters and View Toggle */}
+        <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+          <ToggleButtonGroup
+            value={viewMode}
+            exclusive
+            onChange={(_, newMode) => newMode && setViewMode(newMode)}
+            size="small"
+          >
+            <ToggleButton value="tile">
+              <ViewModule />
+            </ToggleButton>
+            <ToggleButton value="list">
+              <ViewList />
+            </ToggleButton>
+          </ToggleButtonGroup>
           <TextField
             size="small"
             placeholder="Search users..."
@@ -313,18 +327,97 @@ export const WalletManagement: React.FC = () => {
         </Alert>
       )}
 
-      <Card>
-        <CardContent>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Typography variant="h6">
-              User Wallets & Limits (Page {page} of {totalPages})
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Showing {users.length} users
-            </Typography>
-          </Box>
-          
-          <TableContainer component={Paper} variant="outlined">
+      {viewMode === 'tile' ? (
+        <Grid container spacing={2}>
+          {users.map((user) => {
+            const wallet = wallets.find(w => w.userId === user.id);
+            return (
+              <Grid item xs={12} sm={6} md={4} key={user.id}>
+                <Card variant="outlined">
+                  <CardContent>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                      <Checkbox
+                        checked={selectedUsers.includes(user.id)}
+                        onChange={() => handleSelectUser(user.id)}
+                      />
+                      <Chip label={user.roleName} size="small" />
+                    </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                      <Person />
+                      <Box>
+                        <Typography variant="body1" fontWeight="bold">
+                          {user.fullName || user.username}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {user.username}
+                        </Typography>
+                      </Box>
+                    </Box>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="caption" color="text.secondary">Balance</Typography>
+                      <Typography variant="h6" color={getBalanceColor(wallet?.balance || 0) + '.main'}>
+                        ₹{wallet?.balance?.toLocaleString() || '0'}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Pending: ₹{wallet?.pendingAmount?.toLocaleString() || '0'}
+                      </Typography>
+                    </Box>
+                    <Chip 
+                      label={wallet?.isActive ? 'Active' : 'Inactive'} 
+                      color={wallet?.isActive ? 'success' : 'error'}
+                      size="small"
+                      sx={{ mb: 2 }}
+                    />
+                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                      <Button
+                        size="small"
+                        variant="contained"
+                        color="success"
+                        startIcon={<Add />}
+                        onClick={() => openAdjustDialog(user, 'deposit')}
+                        fullWidth
+                      >
+                        Deposit
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="contained"
+                        color="error"
+                        startIcon={<Download />}
+                        onClick={() => openAdjustDialog(user, 'withdrawal')}
+                        fullWidth
+                      >
+                        Withdraw
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        startIcon={<Edit />}
+                        onClick={() => openLimitsDialog(user)}
+                        fullWidth
+                      >
+                        Limits
+                      </Button>
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+            );
+          })}
+        </Grid>
+      ) : (
+        <Card>
+          <CardContent>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6">
+                User Wallets & Limits (Page {page} of {totalPages})
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Showing {users.length} users
+              </Typography>
+            </Box>
+            
+            <TableContainer component={Paper} variant="outlined">
             <Table>
               <TableHead>
                 <TableRow>
@@ -420,20 +513,21 @@ export const WalletManagement: React.FC = () => {
                 })}
               </TableBody>
             </Table>
-          </TableContainer>
-          
-          {totalPages > 1 && (
-            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
-              <Pagination
-                count={totalPages}
-                page={page}
-                onChange={(_, newPage) => setPage(newPage)}
-                color="primary"
-              />
-            </Box>
-          )}
-        </CardContent>
-      </Card>
+            </TableContainer>
+          </CardContent>
+        </Card>
+      )}
+      
+      {totalPages > 1 && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+          <Pagination
+            count={totalPages}
+            page={page}
+            onChange={(_, newPage) => setPage(newPage)}
+            color="primary"
+          />
+        </Box>
+      )}
 
       {/* Adjust Balance Dialog */}
       <Dialog open={adjustDialog} onClose={() => setAdjustDialog(false)} maxWidth="md" fullWidth>

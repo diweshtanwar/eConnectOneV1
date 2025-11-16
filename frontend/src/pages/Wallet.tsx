@@ -21,12 +21,16 @@ import {
   FormControl,
   InputLabel,
   Select,
+  ToggleButtonGroup,
+  ToggleButton,
 } from '@mui/material';
 import {
   AccountBalanceWallet,
   History,
   TrendingUp,
   TrendingDown,
+  ViewModule,
+  ViewList,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/api';
@@ -63,6 +67,7 @@ export const Wallet: React.FC = () => {
   const [typeFilter, setTypeFilter] = useState('ALL');
   const [error, setError] = useState<string>('');
   const pageSize = 20;
+  const [viewMode, setViewMode] = useState<'tile' | 'list'>('list');
 
 
   useEffect(() => {
@@ -200,11 +205,24 @@ export const Wallet: React.FC = () => {
         <Grid item xs={12}>
           <Card>
             <CardContent>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 2 }}>
                 <Typography variant="h6">
                   Transaction History
                 </Typography>
-                <Box sx={{ display: 'flex', gap: 2 }}>
+                <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                  <ToggleButtonGroup
+                    value={viewMode}
+                    exclusive
+                    onChange={(_, newMode) => newMode && setViewMode(newMode)}
+                    size="small"
+                  >
+                    <ToggleButton value="tile">
+                      <ViewModule />
+                    </ToggleButton>
+                    <ToggleButton value="list">
+                      <ViewList />
+                    </ToggleButton>
+                  </ToggleButtonGroup>
                   <FormControl size="small" sx={{ minWidth: 120 }}>
                     <InputLabel>Status</InputLabel>
                     <Select
@@ -232,7 +250,60 @@ export const Wallet: React.FC = () => {
                   </FormControl>
                 </Box>
               </Box>
-              <TableContainer component={Paper} variant="outlined">
+              
+              {viewMode === 'tile' ? (
+                <Grid container spacing={2}>
+                  {transactions.length === 0 ? (
+                    <Grid item xs={12}>
+                      <Typography align="center" color="text.secondary">
+                        No transactions found
+                      </Typography>
+                    </Grid>
+                  ) : (
+                    transactions.map((transaction) => (
+                      <Grid item xs={12} sm={6} md={4} key={transaction.transactionId}>
+                        <Card variant="outlined">
+                          <CardContent>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                {getTransactionIcon(transaction.transactionType)}
+                                <Typography variant="body2" fontWeight="bold">
+                                  {transaction.transactionType}
+                                </Typography>
+                              </Box>
+                              <Chip
+                                label={transaction.status}
+                                color={getStatusColor(transaction.status)}
+                                size="small"
+                              />
+                            </Box>
+                            <Typography
+                              variant="h5"
+                              color={
+                                transaction.transactionType === 'DEPOSIT' ? 'success.main' : 
+                                transaction.transactionType === 'WITHDRAWAL' ? 'error.main' : 'inherit'
+                              }
+                              sx={{ mb: 1 }}
+                            >
+                              {transaction.transactionType === 'WITHDRAWAL' ? '-' : '+'}₹{transaction.amount.toLocaleString()}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                              {transaction.description}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary" display="block">
+                              {new Date(transaction.createdDate).toLocaleDateString()}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              Balance After: ₹{transaction.balanceAfter.toLocaleString()}
+                            </Typography>
+                          </CardContent>
+                        </Card>
+                      </Grid>
+                    ))
+                  )}
+                </Grid>
+              ) : (
+                <TableContainer component={Paper} variant="outlined">
                 <Table>
                   <TableHead>
                     <TableRow>
@@ -287,7 +358,8 @@ export const Wallet: React.FC = () => {
                     )}
                   </TableBody>
                 </Table>
-              </TableContainer>
+                </TableContainer>
+              )}
               
               {totalPages > 1 && (
                 <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>

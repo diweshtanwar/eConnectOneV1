@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { getMyBroadcasts, broadcastApi } from '../api/api';
-import { Card, CardContent, Typography, Chip, Box, CircularProgress, Grid, Divider, IconButton, Collapse, Alert } from '@mui/material';
-import { ExpandMore, ExpandLess, Notifications, Schedule, Person, Label } from '@mui/icons-material';
+import { Card, CardContent, Typography, Chip, Box, CircularProgress, Grid, Divider, IconButton, Collapse, Alert, ToggleButtonGroup, ToggleButton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from '@mui/material';
+import { ExpandMore, ExpandLess, Notifications, Schedule, Person, Label, ViewModule, ViewList, CheckCircle } from '@mui/icons-material';
 
 const MyBroadcasts: React.FC = () => {
   const [broadcasts, setBroadcasts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [viewMode, setViewMode] = useState<'tile' | 'list'>('tile');
 
   useEffect(() => {
     fetchBroadcasts();
@@ -49,9 +50,24 @@ const MyBroadcasts: React.FC = () => {
 
   return (
     <Box p={3}>
-      <Box display="flex" alignItems="center" gap={2} mb={3}>
-        <Notifications color="primary" sx={{ fontSize: 32 }} />
-        <Typography variant="h4" fontWeight="bold">My Broadcasts</Typography>
+      <Box display="flex" alignItems="center" justifyContent="space-between" mb={3}>
+        <Box display="flex" alignItems="center" gap={2}>
+          <Notifications color="primary" sx={{ fontSize: 32 }} />
+          <Typography variant="h4" fontWeight="bold">My Broadcasts</Typography>
+        </Box>
+        <ToggleButtonGroup
+          value={viewMode}
+          exclusive
+          onChange={(_, newMode) => newMode && setViewMode(newMode)}
+          size="small"
+        >
+          <ToggleButton value="tile">
+            <ViewModule fontSize="small" />
+          </ToggleButton>
+          <ToggleButton value="list">
+            <ViewList fontSize="small" />
+          </ToggleButton>
+        </ToggleButtonGroup>
       </Box>
       
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
@@ -62,7 +78,7 @@ const MyBroadcasts: React.FC = () => {
           <Typography variant="h6" color="text.secondary">No broadcasts received yet</Typography>
           <Typography variant="body2" color="text.secondary">You'll see notifications here when admins send broadcasts</Typography>
         </Card>
-      ) : (
+      ) : viewMode === 'tile' ? (
         <Grid container spacing={2}>
           {broadcasts.map(b => (
             <Grid item xs={12} key={b.broadcastId || b.id}>
@@ -160,6 +176,48 @@ const MyBroadcasts: React.FC = () => {
             </Grid>
           ))}
         </Grid>
+      ) : (
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Title</TableCell>
+                <TableCell>Priority</TableCell>
+                <TableCell>From</TableCell>
+                <TableCell>Received At</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell>Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {broadcasts.map(b => (
+                <TableRow key={b.broadcastId || b.id} hover sx={{ backgroundColor: !b.isRead ? 'action.hover' : 'inherit' }}>
+                  <TableCell>
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <strong>{b.title}</strong>
+                      {!b.isRead && <Chip label="NEW" color="primary" size="small" />}
+                    </Box>
+                  </TableCell>
+                  <TableCell>
+                    <Chip label={b.priority || 'Normal'} color={getPriorityColor(b.priority) as any} size="small" />
+                  </TableCell>
+                  <TableCell>{b.sentBy}</TableCell>
+                  <TableCell>{new Date(b.createdAt).toLocaleString()}</TableCell>
+                  <TableCell>
+                    <Chip label={b.isRead ? 'Read' : 'Unread'} color={b.isRead ? 'default' : 'primary'} size="small" />
+                  </TableCell>
+                  <TableCell>
+                    {!b.isRead && (
+                      <IconButton color="primary" onClick={() => handleMarkAsRead(b.id)} size="small">
+                        <CheckCircle fontSize="small" />
+                      </IconButton>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
       )}
     </Box>
   );

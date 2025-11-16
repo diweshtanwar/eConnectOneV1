@@ -216,7 +216,10 @@ export const ProfilePage: React.FC = () => {
             </Grid>
             <Grid item xs>
               <Typography variant="h4" fontWeight="bold" gutterBottom>
-                {user.fullName || user.username}
+                {user.fullName || 'Name not provided'}
+              </Typography>
+              <Typography variant="body1" sx={{ opacity: 0.9, mb: 1 }}>
+                @{user.username}
               </Typography>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
                 <Chip 
@@ -369,6 +372,15 @@ export const ProfilePage: React.FC = () => {
                 </Box>
               ) : (
                 <Grid container spacing={2}>
+                  <Grid item xs={12}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', py: 1 }}>
+                      <Person sx={{ mr: 2, color: 'text.secondary' }} />
+                      <Box>
+                        <Typography variant="body2" color="text.secondary">Full Name</Typography>
+                        <Typography variant="body1" fontWeight="medium">{user.fullName || 'Not provided'}</Typography>
+                      </Box>
+                    </Box>
+                  </Grid>
                   <Grid item xs={12}>
                     <Box sx={{ display: 'flex', alignItems: 'center', py: 1 }}>
                       <Badge sx={{ mr: 2, color: 'text.secondary' }} />

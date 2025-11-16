@@ -384,10 +384,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, menuItems, title }) =>
           <Person sx={{ mr: 1, fontSize: '1rem' }} />
           Profile
         </MenuItem>
-        <MenuItem onClick={() => { navigate('/settings'); setAnchorElUser(null); }}>
-          <Settings sx={{ mr: 1, fontSize: '1rem' }} />
-          Settings
-        </MenuItem>
         <Divider sx={{ my: 1 }} />
         <MenuItem onClick={() => { logout(); navigate('/login'); }}>
           <Logout sx={{ mr: 1, fontSize: '1rem' }} />

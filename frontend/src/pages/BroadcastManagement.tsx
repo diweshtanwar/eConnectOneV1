@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { getAllBroadcasts, sendBroadcast, editBroadcast, deleteBroadcast } from '../api/api';
-import { Card, CardContent, Typography, Button, Box, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Chip, CircularProgress, IconButton, Alert, Grid, Divider, Paper, Collapse } from '@mui/material';
-import { Edit, Delete, Add, Campaign, ExpandMore, ExpandLess, Schedule, Person, Label } from '@mui/icons-material';
+import { Card, CardContent, Typography, Button, Box, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Chip, CircularProgress, IconButton, Alert, Grid, Divider, Paper, Collapse, ToggleButtonGroup, ToggleButton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material';
+import { Edit, Delete, Add, Campaign, ExpandMore, ExpandLess, Schedule, Person, Label, ViewModule, ViewList } from '@mui/icons-material';
 
 const emptyForm = { title: '', message: '', priority: 'Normal', targetRoles: 'All', expiresAt: '' };
 
@@ -13,6 +13,8 @@ const BroadcastManagement: React.FC = () => {
   const [editId, setEditId] = useState<number|null>(null);
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [viewMode, setViewMode] = useState<'tile' | 'list'>('tile');
 
   const fetchBroadcasts = () => {
     setLoading(true);
@@ -71,10 +73,6 @@ const BroadcastManagement: React.FC = () => {
     }
   };
 
-  if (loading) return <Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>;
-
-  const [expandedId, setExpandedId] = useState<number | null>(null);
-
   const getPriorityColor = (priority: string) => {
     switch (priority?.toLowerCase()) {
       case 'high': return 'error';
@@ -84,6 +82,8 @@ const BroadcastManagement: React.FC = () => {
     }
   };
 
+  if (loading) return <Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>;
+
   return (
     <Box p={3}>
       <Box display="flex" alignItems="center" justifyContent="space-between" mb={3}>
@@ -91,15 +91,30 @@ const BroadcastManagement: React.FC = () => {
           <Campaign color="primary" sx={{ fontSize: 32 }} />
           <Typography variant="h4" fontWeight="bold">Broadcast Management</Typography>
         </Box>
-        <Button 
+        <Box display="flex" gap={2} alignItems="center">
+          <ToggleButtonGroup
+            value={viewMode}
+            exclusive
+            onChange={(_, newMode) => newMode && setViewMode(newMode)}
+            size="small"
+          >
+            <ToggleButton value="tile">
+              <ViewModule fontSize="small" />
+            </ToggleButton>
+            <ToggleButton value="list">
+              <ViewList fontSize="small" />
+            </ToggleButton>
+          </ToggleButtonGroup>
+          <Button 
           variant="contained" 
           color="primary" 
           size="large"
           startIcon={<Add />}
           onClick={() => handleOpen()}
-        >
-          Send New Broadcast
-        </Button>
+          >
+            Send New Broadcast
+          </Button>
+        </Box>
       </Box>
       
       {success && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess('')}>{success}</Alert>}
@@ -110,7 +125,7 @@ const BroadcastManagement: React.FC = () => {
           <Typography variant="h6" color="text.secondary">No broadcasts sent yet</Typography>
           <Typography variant="body2" color="text.secondary">Click "Send New Broadcast" to create your first broadcast</Typography>
         </Card>
-      ) : (
+      ) : viewMode === 'tile' ? (
         <Grid container spacing={2}>
           {broadcasts.map(b => (
             <Grid item xs={12} key={b.id}>
@@ -191,6 +206,46 @@ const BroadcastManagement: React.FC = () => {
             </Grid>
           ))}
         </Grid>
+      ) : (
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Title</TableCell>
+                <TableCell>Priority</TableCell>
+                <TableCell>Target Roles</TableCell>
+                <TableCell>Sent By</TableCell>
+                <TableCell>Created At</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell>Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {broadcasts.map(b => (
+                <TableRow key={b.id} hover>
+                  <TableCell><strong>{b.title}</strong></TableCell>
+                  <TableCell>
+                    <Chip label={b.priority} color={getPriorityColor(b.priority) as any} size="small" />
+                  </TableCell>
+                  <TableCell>{b.targetRoles}</TableCell>
+                  <TableCell>{b.sentBy}</TableCell>
+                  <TableCell>{new Date(b.createdAt).toLocaleString()}</TableCell>
+                  <TableCell>
+                    <Chip label={b.isActive ? 'Active' : 'Inactive'} color={b.isActive ? 'success' : 'default'} size="small" />
+                  </TableCell>
+                  <TableCell>
+                    <IconButton color="primary" onClick={() => handleOpen(b)} size="small">
+                      <Edit fontSize="small" />
+                    </IconButton>
+                    <IconButton color="error" onClick={() => handleDelete(b.id)} size="small">
+                      <Delete fontSize="small" />
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
       )}
       <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
         <DialogTitle>{editId ? 'Edit Broadcast' : 'Send New Broadcast'}</DialogTitle>
