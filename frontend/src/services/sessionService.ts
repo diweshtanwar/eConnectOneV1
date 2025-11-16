@@ -36,6 +36,7 @@ class SessionService {
 
   private resetTimer() {
     this.clearTimers();
+    this.lastActivity = Date.now();
     
     const timeoutMs = this.idleTimeoutMinutes * 60 * 1000;
     const warningMs = (this.idleTimeoutMinutes - this.warningMinutes) * 60 * 1000;
