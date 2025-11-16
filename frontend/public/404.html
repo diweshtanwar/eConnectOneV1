@@ -1,20 +1,76 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8">
-    <title>eConnectOne Portal</title>
-    <script type="text/javascript">
-      var pathSegmentsToKeep = 1;
-      var l = window.location;
-      l.replace(
-        l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
-        l.pathname.split('/').slice(0, 1 + pathSegmentsToKeep).join('/') + '/?/' +
-        l.pathname.slice(1).split('/').slice(pathSegmentsToKeep).join('/').replace(/&/g, '~and~') +
-        (l.search ? '&' + l.search.slice(1).replace(/&/g, '~and~') : '') +
-        l.hash
-      );
-    </script>
-  </head>
-  <body>
-  </body>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Page Not Found - eConnectOne</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+    }
+    .container {
+      text-align: center;
+      padding: 2rem;
+      max-width: 600px;
+    }
+    .error-code {
+      font-size: 8rem;
+      font-weight: 700;
+      line-height: 1;
+      margin-bottom: 1rem;
+      text-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+      font-weight: 600;
+    }
+    p {
+      font-size: 1.1rem;
+      margin-bottom: 2rem;
+      opacity: 0.9;
+      line-height: 1.6;
+    }
+    .btn {
+      display: inline-block;
+      padding: 12px 32px;
+      background: #fff;
+      color: #667eea;
+      text-decoration: none;
+      border-radius: 50px;
+      font-weight: 600;
+      transition: transform 0.2s, box-shadow 0.2s;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+    }
+    .icon {
+      font-size: 4rem;
+      margin-bottom: 1rem;
+    }
+  </style>
+  <script>
+    // Redirect to React app with the attempted path
+    sessionStorage.setItem('redirectPath', window.location.pathname);
+    window.location.replace('/eConnectOneV1/');
+  </script>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">🔍</div>
+    <div class="error-code">404</div>
+    <h1>Page Not Found</h1>
+    <p>The page you're looking for doesn't exist or has been moved. Redirecting you to the home page...</p>
+    <a href="/eConnectOneV1/" class="btn">Go to Home</a>
+  </div>
+</body>
 </html>

@@ -6,6 +6,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
     <title>eConnectOne Portal</title>
+    
+    <!-- Handle redirect from 404.html -->
+    <script>
+      (function() {
+        var redirect = sessionStorage.getItem('redirectPath');
+        if (redirect && redirect !== '/eConnectOneV1/') {
+          sessionStorage.removeItem('redirectPath');
+          history.replaceState(null, '', redirect);
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

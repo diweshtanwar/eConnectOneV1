@@ -2,6 +2,8 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { LoginPage } from './pages/LoginPage';
 import { Dashboard } from './pages/Dashboard';
+import { NotFoundPage } from './pages/NotFoundPage';
+import { ErrorBoundary } from './pages/ErrorBoundary';
 import { UserManagementTabs } from './pages/UserManagementTabs';
 import { AuditLogs } from './pages/AuditLogs';
 import { SystemSettings } from './pages/SystemSettings';
@@ -58,9 +60,10 @@ const App: React.FC = () => {
   // Filter menu items based on DB permissions and roles
   const menuItems = filterMenuByPermissions(MENU_CONFIG, user, permissions);
   return (
-    <ThemeProvider>
-      <PWAInstallPrompt />
-      <Routes>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <PWAInstallPrompt />
+        <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route
@@ -264,9 +267,11 @@ const App: React.FC = () => {
             </PrivateRoute>
           }
         />
-      </Routes>
-      <OfflineIndicator />
-    </ThemeProvider>
+        <Route path="*" element={<NotFoundPage />} />
+        </Routes>
+        <OfflineIndicator />
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 };
 
