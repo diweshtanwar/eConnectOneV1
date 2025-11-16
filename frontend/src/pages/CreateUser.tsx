@@ -1,13 +1,8 @@
-import React, { useState } from 'react';
-import { Box, TextField, Button, MenuItem, Typography, Alert, IconButton, InputAdornment } from '@mui/material';
-import { Visibility, VisibilityOff } from '@mui/icons-material';
-import { userApi } from '../api/api';
-
-const roles = [
-  { value: '1', label: 'Master Admin' },
-  { value: '2', label: 'Admin' },
-  { value: '3', label: 'HO User' }
-];
+import React, { useState, useEffect } from 'react';
+import { Box, TextField, Button, MenuItem, Typography, Alert, IconButton, InputAdornment, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import { Visibility, VisibilityOff, CheckCircle } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
+import { userApi, roleApi } from '../api/api';
 
 const initialState = {
   username: '',
@@ -18,21 +13,41 @@ const initialState = {
   mobileNumber: '',
   emergencyContactNumber: '',
   fatherName: '',
-  motherName: ''
+  motherName: '',
+  cspCode: ''
 };
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export const CreateUser: React.FC = () => {
+  const navigate = useNavigate();
   const [form, setForm] = useState(initialState);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [roles, setRoles] = useState<{id: number, name: string}[]>([]);
+  const [successDialogOpen, setSuccessDialogOpen] = useState(false);
+  const [createdUsername, setCreatedUsername] = useState('');
+
+  useEffect(() => {
+    const fetchRoles = async () => {
+      try {
+        const data = await roleApi.getAllRoles();
+        setRoles(data);
+      } catch (err) {
+        console.error('Failed to fetch roles:', err);
+      }
+    };
+    fetchRoles();
+  }, []);
 
   const validate = () => {
+    if (!form.username || form.username.trim().length === 0) return 'Username is required.';
     if (!form.password || form.password.length < 6) return 'Password is required (min 6 chars).';
     if (!form.roleId) return 'Role is required.';
+    const selectedRole = roles.find(r => r.id === parseInt(form.roleId));
+    if (selectedRole?.name === 'CSP' && !form.cspCode) return 'CSP Code is required for CSP users.';
     if (form.email && !emailRegex.test(form.email)) return 'Invalid email format.';
     if (form.email && form.email.length > 255) return 'Email max length is 255.';
     if (form.fullName && form.fullName.length > 255) return 'Full Name max length is 255.';
@@ -58,7 +73,7 @@ export const CreateUser: React.FC = () => {
     }
     setLoading(true);
     try {
-      const userDto = {
+      const userDto: any = {
         username: form.username,
         password: form.password,
         roleId: parseInt(form.roleId, 10),
@@ -69,8 +84,12 @@ export const CreateUser: React.FC = () => {
         fatherName: form.fatherName,
         motherName: form.motherName
       };
+      if (form.cspCode) {
+        userDto.cspCode = form.cspCode;
+      }
       await userApi.createUser(userDto);
-      setSuccess('User created successfully!');
+      setCreatedUsername(form.username);
+      setSuccessDialogOpen(true);
       setForm(initialState);
     } catch (err: any) {
       setError(err.message || 'Failed to create user.');
@@ -129,7 +148,7 @@ export const CreateUser: React.FC = () => {
           margin="normal"
         >
           {roles.map((role) => (
-            <MenuItem key={role.value} value={role.value}>{role.label}</MenuItem>
+            <MenuItem key={role.id} value={role.id}>{role.name}</MenuItem>
           ))}
         </TextField>
         <TextField
@@ -186,10 +205,46 @@ export const CreateUser: React.FC = () => {
           margin="normal"
           inputProps={{ maxLength: 255 }}
         />
+        {roles.find(r => r.id === parseInt(form.roleId))?.name === 'CSP' && (
+          <TextField
+            label="CSP Code"
+            name="cspCode"
+            value={form.cspCode}
+            onChange={handleChange}
+            fullWidth
+            required
+            margin="normal"
+            helperText="Required for CSP users"
+          />
+        )}
         <Button type="submit" variant="contained" color="primary" fullWidth disabled={loading} sx={{ mt: 2 }}>
           {loading ? 'Creating...' : 'Create User'}
         </Button>
       </form>
+
+      <Dialog open={successDialogOpen} onClose={() => {}}>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <CheckCircle color="success" />
+          User Created Successfully
+        </DialogTitle>
+        <DialogContent>
+          <Typography>
+            User <strong>{createdUsername}</strong> has been created successfully!
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button 
+            onClick={() => {
+              setSuccessDialogOpen(false);
+              navigate('/user-management');
+            }} 
+            variant="contained" 
+            color="primary"
+          >
+            OK
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

@@ -126,10 +126,24 @@ export const AccountLockout: React.FC = () => {
 
   const getStatusChip = (account: AccountLockoutDto) => {
     if (account.isLocked) {
-      return <Chip label="LOCKED" color="error" size="small" icon={<Lock />} />;
+      return (
+        <Chip 
+          label="LOCKED" 
+          color="error" 
+          size="small" 
+          icon={<Lock fontSize="small" />} 
+        />
+      );
     }
     if (account.failedLoginAttempts > 0) {
-      return <Chip label={`${account.failedLoginAttempts} Failed`} color="warning" size="small" icon={<Warning />} />;
+      return (
+        <Chip 
+          label={`${account.failedLoginAttempts} Failed`} 
+          color="warning" 
+          size="small" 
+          icon={<Warning fontSize="small" />} 
+        />
+      );
     }
     return <Chip label="Normal" color="success" size="small" />;
   };

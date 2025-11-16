@@ -26,17 +26,6 @@ namespace eConnectOne.API.Controllers
                 .Include(u => u.Role)
                 .FirstOrDefaultAsync(u => u.Username == request.Username && !u.IsDeleted);
 
-            // Debug: Log user lookup
-            Console.WriteLine($"Login attempt for: {request.Username}");
-            if (user != null)
-            {
-                Console.WriteLine($"User found: {user.Username}, Active: {user.IsActive}, Role: {user.Role?.Name}");
-            }
-            else
-            {
-                Console.WriteLine("User not found");
-            }
-
             if (user == null)
             {
                 return Unauthorized(new { 
@@ -65,12 +54,7 @@ namespace eConnectOne.API.Controllers
             }
 
             // Verify password
-            Console.WriteLine($"Attempting to verify password for user: {user.Username}");
-            Console.WriteLine($"Password hash in DB: {user.PasswordHash}");
-            Console.WriteLine($"Password provided: {request.Password}");
-            
             bool passwordValid = BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash);
-            Console.WriteLine($"Password verification result: {passwordValid}");
             
             if (!passwordValid)
             {

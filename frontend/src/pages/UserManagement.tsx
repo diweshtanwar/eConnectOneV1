@@ -121,6 +121,7 @@ export const UserManagement: React.FC = () => {
         <Table>
           <TableHead>
             <TableRow>
+              <TableCell>Username</TableCell>
               <TableCell>Full Name</TableCell>
               <TableCell>Email</TableCell>
               <TableCell>Role</TableCell>
@@ -132,6 +133,7 @@ export const UserManagement: React.FC = () => {
           <TableBody>
             {getFilteredUsers().map((user) => (
               <TableRow key={user.id}>
+                <TableCell>{user.username}</TableCell>
                 <TableCell>{user.fullName || '-'}</TableCell>
                 <TableCell>{user.email || '-'}</TableCell>
                 <TableCell>
@@ -147,12 +149,11 @@ export const UserManagement: React.FC = () => {
                 <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
                 <TableCell>
                   <IconButton size="small" color="info" onClick={() => { setSelectedUser(user); setViewDialogOpen(true); }}>
-                    <Visibility />
+                    <Visibility fontSize="small" />
                   </IconButton>
                   <IconButton size="small" color="primary" onClick={() => { setSelectedUser(user); setEditDialogOpen(true); }}>
-                    <Edit />
+                    <Edit fontSize="small" />
                   </IconButton>
-                  {/* User document and details actions removed; now managed in edit dialog */}
                   <IconButton 
                     size="small" 
                     color="error"
@@ -161,7 +162,7 @@ export const UserManagement: React.FC = () => {
                       setDeleteDialogOpen(true);
                     }}
                   >
-                    <Delete />
+                    <Delete fontSize="small" />
                   </IconButton>
                 </TableCell>
               </TableRow>

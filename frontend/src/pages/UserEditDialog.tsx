@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Alert, Tabs, Tab, Box, MenuItem } from '@mui/material';
-import { UserResponseDto, userApi, locationApi } from '../api/api';
+import { UserResponseDto, userApi, locationApi, roleApi } from '../api/api';
 
 interface UserEditDialogProps {
   open: boolean;
@@ -58,6 +58,7 @@ const UserEditDialog: React.FC<UserEditDialogProps> = ({ open, user, onClose, on
   const [loading, setLoading] = useState(false);
   const [cities, setCities] = useState<{ id: number, name: string }[]>([]);
   const [states, setStates] = useState<{ id: number, name: string }[]>([]);
+  const [roles, setRoles] = useState<{ id: number, name: string }[]>([]);
 
   React.useEffect(() => {
     if (user) {
@@ -74,10 +75,11 @@ const UserEditDialog: React.FC<UserEditDialogProps> = ({ open, user, onClose, on
     setFile(null);
     setError('');
     setSuccess('');
-    // Fetch cities and states on open
+    // Fetch cities, states, and roles on open
     if (open) {
       locationApi.getCities().then(setCities);
       locationApi.getStates().then(setStates);
+      roleApi.getAllRoles().then(setRoles);
       // Fetch user details if user exists
       if (user && user.id) {
         userApi.getUserById(user.id)

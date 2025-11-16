@@ -48,8 +48,8 @@ const getApiBaseUrl = () => {
   
   // Check if we're in production (GitHub Pages)
   if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-    // Production - use Railway backend (update with your actual URL)
-    return 'https://centerbeam.proxy.rlwy.net:57891/api';
+    // Production - use Railway backend
+    return 'https://your-railway-app-name.up.railway.app/api';
   }
   
   // Development - use local backend
@@ -76,7 +76,7 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 && !window.location.hash.includes('/login')) {
       localStorage.removeItem('token');
       window.location.href = '/#/login';
     }
@@ -100,6 +100,7 @@ export interface UserCreateDto {
   emergencyContactNumber?: string;
   fatherName?: string;
   motherName?: string;
+  cspCode?: string;
 }
 
 export interface UserUpdateDto {
@@ -439,6 +440,13 @@ export const locationApi = {
   },
   getStates: async () => {
     const response = await api.get('/states');
+    return response.data;
+  },
+};
+
+export const roleApi = {
+  getAllRoles: async () => {
+    const response = await api.get('/roles');
     return response.data;
   },
 };

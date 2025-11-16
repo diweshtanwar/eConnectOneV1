@@ -197,7 +197,7 @@ export const PasswordReset: React.FC = () => {
                     onClick={() => handleOpenResetDialog(user)}
                     title="Reset Password"
                   >
-                    <Lock />
+                    <Lock fontSize="small" />
                   </IconButton>
                 </TableCell>
               </TableRow>

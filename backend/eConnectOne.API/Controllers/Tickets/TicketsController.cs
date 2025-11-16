@@ -67,8 +67,6 @@ namespace eConnectOne.API.Controllers.Tickets
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error creating ticket: {ex.Message}");
-                Console.WriteLine($"Stack trace: {ex.StackTrace}");
                 return StatusCode(500, new { message = "Failed to create ticket", error = ex.Message });
             }
         }
@@ -154,13 +152,13 @@ namespace eConnectOne.API.Controllers.Tickets
 
         private int GetCurrentUserId()
         {
-            var userIdClaim = User.FindFirst("id")?.Value;
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
             return int.TryParse(userIdClaim, out var userId) ? userId : 1; // Default to 1 if not found
         }
 
         private string GetCurrentUserRole()
         {
-            return User.FindFirst("role")?.Value ?? "HO user";
+            return User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "HO user";
         }
     }
 }

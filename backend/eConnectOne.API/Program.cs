@@ -11,7 +11,6 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Use connection string from appsettings.json (Railway public hostname)
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-Console.WriteLine("✅ Using connection string from appsettings");
 
 // Add services to the container.
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
@@ -59,6 +58,7 @@ builder.Services.AddCors(options =>
         {
             builder.WithOrigins(
                     "http://localhost:5173",           // Vite dev server
+                    "http://localhost:5174",           // Vite dev server alt port
                     "http://localhost:3001",           // Alternative dev port
                     "https://diweshtanwar.github.io",  // GitHub Pages root
                     "https://diweshtanwar.github.io/eConnectOneV1"  // GitHub Pages subdirectory
@@ -127,8 +127,8 @@ app.UseStaticFiles(); // Enable serving static files (e.g., attachments)
 
 app.UseCors("AllowFrontend");
 
-// Add rate limiting middleware
-app.UseMiddleware<eConnectOne.API.Middleware.RateLimitingMiddleware>();
+// Add rate limiting middleware (disabled for development)
+// app.UseMiddleware<eConnectOne.API.Middleware.RateLimitingMiddleware>();
 
 app.UseAuthentication();
 app.UseAuthorization();
@@ -142,13 +142,11 @@ try
     {
         var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         dbContext.Database.Migrate();
-        Console.WriteLine("✅ Database migration completed successfully");
     }
 }
-catch (Exception ex)
+catch (Exception)
 {
-    Console.WriteLine($"⚠️ Database initialization error: {ex.Message}");
-    // Don't fail startup, log and continue
+    // Don't fail startup, continue
 }
 
 app.Run();

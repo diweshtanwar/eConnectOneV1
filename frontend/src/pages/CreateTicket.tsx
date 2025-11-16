@@ -95,9 +95,7 @@ export const CreateTicket: React.FC = () => {
     
     // Type-specific validation
     if (selectedTypeId === 1) {
-      if (!technicalDetail.problemTypeId) {
-        errors.problemType = 'Problem type is required';
-      }
+      // ProblemTypeId is optional
       if (!technicalDetail.anyDeskDetail?.trim()) {
         errors.anyDeskDetail = 'AnyDesk detail is required';
       }
@@ -193,13 +191,13 @@ export const CreateTicket: React.FC = () => {
             <Typography variant="h6" gutterBottom>Technical Details</Typography>
             <TextField
               select
-              label="Problem Type"
+              label="Problem Type (Optional)"
               fullWidth
               margin="normal"
               value={technicalDetail.problemTypeId || ''}
               onChange={(e) => setTechnicalDetail({ ...technicalDetail, problemTypeId: Number(e.target.value) })}
               error={!!validationErrors.problemType}
-              helperText={validationErrors.problemType}
+              helperText={validationErrors.problemType || 'Select if applicable'}
             >
               {problemTypes.map((option) => (
                 <MenuItem key={option.id} value={option.id}>

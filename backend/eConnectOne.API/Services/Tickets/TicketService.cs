@@ -169,7 +169,7 @@ namespace eConnectOne.API.Services.Tickets
                         var techDetail = new TechnicalDetail
                         {
                             TicketId = ticket.TicketId,
-                            ProblemTypeId = ticketCreateDto.TechnicalDetail.ProblemTypeId,
+                            ProblemTypeId = ticketCreateDto.TechnicalDetail.ProblemTypeId > 0 ? ticketCreateDto.TechnicalDetail.ProblemTypeId : null,
                             AnyDeskDetail = ticketCreateDto.TechnicalDetail.AnyDeskDetail
                         };
                         _context.TechnicalDetails.Add(techDetail);
