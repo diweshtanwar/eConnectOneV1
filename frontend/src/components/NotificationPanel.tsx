@@ -79,12 +79,12 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
         ...broadcasts.map((b: any) => ({
           id: `broadcast-${b.id}`,
           type: 'broadcast' as const,
-          title: 'System Broadcast',
+          title: b.title || 'System Broadcast',
           content: b.message || 'New system notification',
           timestamp: b.sentAt || b.createdAt,
           isRead: b.isRead || false,
-          from: 'System',
-          path: '/messages',
+          from: b.sentBy || 'System',
+          path: '/my-broadcasts',
         })),
         ...messages.slice(0, 5).map((m: any) => ({
           id: `message-${m.id}`,
@@ -143,8 +143,10 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
     // Navigate to specific page based on notification type
     switch (notification.type) {
       case 'message':
-      case 'broadcast':
         navigate('/messages');
+        break;
+      case 'broadcast':
+        navigate('/my-broadcasts');
         break;
       case 'chat':
         navigate('/chat');
@@ -377,11 +379,11 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
           fullWidth
           variant="outlined"
           onClick={() => {
-            navigate('/messages');
+            navigate('/my-broadcasts');
             onClose();
           }}
         >
-          View All Messages
+          View All Notifications
         </Button>
       </Box>
     </Popover>

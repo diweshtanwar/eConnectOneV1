@@ -15,5 +15,6 @@ namespace eConnectOne.API.Services
         Task<bool> RestoreUserAsync(int id);
         Task<bool> ResetPasswordAsync(int userId, string newPassword);
     Task<IEnumerable<UserResponseDto>> GetUsersByRoleAsync(int? roleId = null);
+    Task<IEnumerable<UserFullDetailsDto>> GetAllUsersWithFullDetailsAsync();
     }
 }

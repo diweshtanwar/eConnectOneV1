@@ -39,35 +39,14 @@ export const AuditLogs: React.FC = () => {
     { key: 'username', label: 'Username', type: 'text' }
   ];
 
-  // Placeholder: fetch logs from backend if available
   const fetchAuditLogs = async (filters?: FilterValues) => {
     try {
       setLoading(true);
-      // TODO: Replace with actual API call to fetch logs
-      setLogs([
-        {
-          id: '1',
-          action: 'LOGIN',
-          entityType: 'User',
-          entityId: '123',
-          userId: 123,
-          username: 'admin',
-          timestamp: new Date().toISOString(),
-          ipAddress: '192.168.1.1'
-        },
-        {
-          id: '2',
-          action: 'CREATE',
-          entityType: 'Ticket',
-          entityId: 'TKT-001',
-          userId: 456,
-          username: 'user1',
-          timestamp: new Date(Date.now() - 3600000).toISOString(),
-          details: 'Created technical support ticket'
-        }
-      ]);
+      const response = await auditApi.getAllLogs();
+      setLogs(response);
     } catch (err) {
       console.error('Failed to fetch audit logs:', err);
+      setLogs([]);
     } finally {
       setLoading(false);
     }
@@ -78,7 +57,6 @@ export const AuditLogs: React.FC = () => {
   const [deleting, setDeleting] = useState(false);
   const [deleteMsg, setDeleteMsg] = useState<string | null>(null);
 
-  // Delete logs before a specific date
   const handleDeleteBeforeDate = async () => {
     if (!deleteDate) return;
     setDeleting(true);
@@ -87,24 +65,25 @@ export const AuditLogs: React.FC = () => {
       await auditApi.cleanLogsBeforeDate(deleteDate);
       setDeleteMsg(`Logs before ${deleteDate} deleted.`);
       fetchAuditLogs();
-    } catch (err) {
-      setDeleteMsg('Failed to delete logs.');
+    } catch (err: any) {
+      setDeleteMsg(err.response?.data || 'Failed to delete logs.');
     } finally {
       setDeleting(false);
     }
   };
 
-  // Delete logs older than N days
   const handleDeleteOlderThanDays = async () => {
     if (!deleteDays || isNaN(Number(deleteDays))) return;
     setDeleting(true);
     setDeleteMsg(null);
     try {
-      await auditApi.cleanLogsOlderThanDays(Number(deleteDays));
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - Number(deleteDays));
+      await auditApi.cleanLogsBeforeDate(cutoffDate.toISOString().split('T')[0]);
       setDeleteMsg(`Logs older than ${deleteDays} days deleted.`);
       fetchAuditLogs();
-    } catch (err) {
-      setDeleteMsg('Failed to delete logs.');
+    } catch (err: any) {
+      setDeleteMsg(err.response?.data || 'Failed to delete logs.');
     } finally {
       setDeleting(false);
     }

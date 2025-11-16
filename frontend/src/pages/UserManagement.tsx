@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Paper, Table, TableHead, TableRow, TableCell, TableBody, Button, Chip, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Alert } from '@mui/material';
-import { Edit, Delete, Visibility, Folder, Upload, Info } from '@mui/icons-material';
-import { userApi, type UserResponseDto } from '../api/api';
+import { Box, Typography, Paper, Table, TableHead, TableRow, TableCell, TableBody, Button, Chip, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Alert, Collapse } from '@mui/material';
+import { Edit, Delete, Visibility, Folder, Upload, Info, KeyboardArrowDown, KeyboardArrowUp, Download } from '@mui/icons-material';
+import { userApi, type UserResponseDto, type UserFullDetailsDto } from '../api/api';
 import { DataFilters, type FilterOption, type FilterValues } from '../components/DataFilters';
 import { useAuth } from '../contexts/AuthContext';
 import UserViewDialog from './UserViewDialog';
@@ -12,6 +12,9 @@ import UserDetailsDialog from './UserDetailsDialog';
 export const UserManagement: React.FC = () => {
   const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<UserResponseDto[]>([]);
+  const [fullDetailsUsers, setFullDetailsUsers] = useState<UserFullDetailsDto[]>([]);
+  const [showFullDetails, setShowFullDetails] = useState(false);
+  const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filterValues, setFilterValues] = useState<FilterValues>({});
@@ -46,8 +49,6 @@ export const UserManagement: React.FC = () => {
   const fetchUsers = async (filters?: FilterValues) => {
     try {
       setLoading(true);
-      // In a real implementation, you would pass filters to the API
-      // const data = await userApi.getAllUsers(1, 100, filters);
       const data = await userApi.getAllUsers(1, 100);
       setUsers(data);
     } catch (err) {
@@ -55,6 +56,77 @@ export const UserManagement: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchFullDetails = async () => {
+    try {
+      setLoading(true);
+      const data = await userApi.getAllUsersWithFullDetails();
+      setFullDetailsUsers(data);
+      setShowFullDetails(true);
+    } catch (err) {
+      setError('Failed to fetch full user details.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleRow = (userId: number) => {
+    const newExpanded = new Set(expandedRows);
+    if (newExpanded.has(userId)) {
+      newExpanded.delete(userId);
+    } else {
+      newExpanded.add(userId);
+    }
+    setExpandedRows(newExpanded);
+  };
+
+  const downloadCSV = () => {
+    const dataToExport = showFullDetails ? fullDetailsUsers : users;
+    const headers = ['ID', 'Username', 'Full Name', 'Email', 'Mobile', 'Role', 'Status', 'Created At'];
+    if (showFullDetails) {
+      headers.push('Address', 'Qualification', 'CSP Code', 'Bank Name', 'PAN', 'Aadhar', 'Documents Count');
+    }
+    
+    const rows = dataToExport.map(user => {
+      const baseRow = [
+        user.id,
+        user.username || '',
+        user.fullName || '',
+        user.email || '',
+        user.mobileNumber || '',
+        user.roleName,
+        user.isActive ? 'Active' : 'Inactive',
+        new Date(user.createdAt).toLocaleDateString()
+      ];
+      
+      if (showFullDetails) {
+        const fullUser = user as UserFullDetailsDto;
+        const details = fullUser.userDetails as any;
+        baseRow.push(
+          fullUser.generalDetails?.address || '',
+          fullUser.generalDetails?.qualification || '',
+          details?.Code || details?.code || '',
+          details?.BankName || details?.bankName || '',
+          details?.PAN || details?.pan || '',
+          details?.AadharNo || details?.aadharNo || '',
+          (fullUser.documents?.length || 0).toString()
+        );
+      }
+      
+      return baseRow;
+    });
+    
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `users_export_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
   };
 
   const handleSearch = (searchFilters: FilterValues) => {
@@ -106,7 +178,27 @@ export const UserManagement: React.FC = () => {
 
   return (
     <Box>
-      {/* Title removed - now handled by parent tabbed component */}
+      <Box sx={{ mb: 2, display: 'flex', gap: 2 }}>
+        <Button
+          variant={!showFullDetails ? 'contained' : 'outlined'}
+          onClick={() => { setShowFullDetails(false); fetchUsers(); }}
+        >
+          Basic View
+        </Button>
+        <Button
+          variant={showFullDetails ? 'contained' : 'outlined'}
+          onClick={fetchFullDetails}
+        >
+          Full Details View
+        </Button>
+        <Button
+          variant="outlined"
+          startIcon={<Download fontSize="small" />}
+          onClick={downloadCSV}
+        >
+          Download CSV
+        </Button>
+      </Box>
       
       <DataFilters
         filters={userFilters}
@@ -121,6 +213,7 @@ export const UserManagement: React.FC = () => {
         <Table>
           <TableHead>
             <TableRow>
+              {showFullDetails && <TableCell />}
               <TableCell>Username</TableCell>
               <TableCell>Full Name</TableCell>
               <TableCell>Email</TableCell>
@@ -131,7 +224,7 @@ export const UserManagement: React.FC = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {getFilteredUsers().map((user) => (
+            {!showFullDetails ? getFilteredUsers().map((user) => (
               <TableRow key={user.id}>
                 <TableCell>{user.username}</TableCell>
                 <TableCell>{user.fullName || '-'}</TableCell>
@@ -166,6 +259,123 @@ export const UserManagement: React.FC = () => {
                   </IconButton>
                 </TableCell>
               </TableRow>
+            )) : fullDetailsUsers.map((user) => (
+              <React.Fragment key={user.id}>
+                <TableRow>
+                  <TableCell>
+                    <IconButton size="small" onClick={() => toggleRow(user.id)}>
+                      {expandedRows.has(user.id) ? <KeyboardArrowUp fontSize="small" /> : <KeyboardArrowDown fontSize="small" />}
+                    </IconButton>
+                  </TableCell>
+                  <TableCell>{user.username}</TableCell>
+                  <TableCell>{user.fullName || '-'}</TableCell>
+                  <TableCell>{user.email || '-'}</TableCell>
+                  <TableCell>
+                    <Chip label={user.roleName} size="small" />
+                  </TableCell>
+                  <TableCell>
+                    <Chip 
+                      label={user.isActive ? 'Active' : 'Inactive'} 
+                      color={user.isActive ? 'success' : 'error'}
+                      size="small"
+                    />
+                  </TableCell>
+                  <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
+                  <TableCell>
+                    <IconButton size="small" color="info" onClick={() => { setSelectedUser(user); setViewDialogOpen(true); }}>
+                      <Visibility fontSize="small" />
+                    </IconButton>
+                    <IconButton size="small" color="primary" onClick={() => { setSelectedUser(user); setEditDialogOpen(true); }}>
+                      <Edit fontSize="small" />
+                    </IconButton>
+                    <IconButton 
+                      size="small" 
+                      color="error"
+                      onClick={() => {
+                        setSelectedUserId(user.id);
+                        setDeleteDialogOpen(true);
+                      }}
+                    >
+                      <Delete fontSize="small" />
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={8}>
+                    <Collapse in={expandedRows.has(user.id)} timeout="auto" unmountOnExit>
+                      <Box sx={{ margin: 2 }}>
+                        <Typography variant="h6" gutterBottom>Additional Details</Typography>
+                        <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+                          <Box>
+                            <Typography variant="subtitle2" color="text.secondary">Mobile:</Typography>
+                            <Typography>{user.mobileNumber || '-'}</Typography>
+                          </Box>
+                          <Box>
+                            <Typography variant="subtitle2" color="text.secondary">Emergency Contact:</Typography>
+                            <Typography>{user.emergencyContactNumber || '-'}</Typography>
+                          </Box>
+                          <Box>
+                            <Typography variant="subtitle2" color="text.secondary">Father Name:</Typography>
+                            <Typography>{user.fatherName || '-'}</Typography>
+                          </Box>
+                          <Box>
+                            <Typography variant="subtitle2" color="text.secondary">Mother Name:</Typography>
+                            <Typography>{user.motherName || '-'}</Typography>
+                          </Box>
+                          {user.generalDetails && (
+                            <>
+                              <Box>
+                                <Typography variant="subtitle2" color="text.secondary">Address:</Typography>
+                                <Typography>{user.generalDetails.address || '-'}</Typography>
+                              </Box>
+                              <Box>
+                                <Typography variant="subtitle2" color="text.secondary">Qualification:</Typography>
+                                <Typography>{user.generalDetails.qualification || '-'}</Typography>
+                              </Box>
+                            </>
+                          )}
+                          {user.userDetails && (
+                            <>
+                              <Box>
+                                <Typography variant="subtitle2" color="text.secondary">CSP Code:</Typography>
+                                <Typography>{user.userDetails.Code || user.userDetails.code || '-'}</Typography>
+                              </Box>
+                              <Box>
+                                <Typography variant="subtitle2" color="text.secondary">Bank Name:</Typography>
+                                <Typography>{user.userDetails.BankName || user.userDetails.bankName || '-'}</Typography>
+                              </Box>
+                              <Box>
+                                <Typography variant="subtitle2" color="text.secondary">Bank Account:</Typography>
+                                <Typography>{user.userDetails.BankAccount || user.userDetails.bankAccount || '-'}</Typography>
+                              </Box>
+                              <Box>
+                                <Typography variant="subtitle2" color="text.secondary">IFSC:</Typography>
+                                <Typography>{user.userDetails.IFSC || user.userDetails.ifsc || '-'}</Typography>
+                              </Box>
+                              <Box>
+                                <Typography variant="subtitle2" color="text.secondary">PAN:</Typography>
+                                <Typography>{user.userDetails.PAN || user.userDetails.pan || '-'}</Typography>
+                              </Box>
+                              <Box>
+                                <Typography variant="subtitle2" color="text.secondary">Aadhar:</Typography>
+                                <Typography>{user.userDetails.AadharNo || user.userDetails.aadharNo || '-'}</Typography>
+                              </Box>
+                            </>
+                          )}
+                        </Box>
+                        {user.documents && user.documents.length > 0 && (
+                          <Box sx={{ mt: 2 }}>
+                            <Typography variant="subtitle2" color="text.secondary">Documents ({user.documents.length}):</Typography>
+                            {user.documents.map((doc) => (
+                              <Chip key={doc.id} label={`${doc.documentType} - ${new Date(doc.uploadedDate).toLocaleDateString()}`} size="small" sx={{ mr: 1, mt: 1 }} />
+                            ))}
+                          </Box>
+                        )}
+                      </Box>
+                    </Collapse>
+                  </TableCell>
+                </TableRow>
+              </React.Fragment>
             ))}
           </TableBody>
         </Table>

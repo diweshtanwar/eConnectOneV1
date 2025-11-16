@@ -9,6 +9,8 @@ namespace eConnectOne.API.Services
         Task<Commission> CreateCommissionAsync(Commission commission, List<CommissionBreakdown> breakdowns);
         Task<List<Commission>> GetCommissionsAsync(int? cspUserId = null, int? year = null);
         Task<Commission?> GetCommissionAsync(Guid commissionId, int? cspUserId = null);
+        Task<Commission> UpdateCommissionAsync(Commission commission);
+        Task<bool> DeleteCommissionAsync(Guid commissionId);
         Task<Commission?> UpdateCommissionStatusAsync(Guid commissionId, string status, int updatedByUserId, string? remarks = null);
     }
 
@@ -73,6 +75,25 @@ namespace eConnectOne.API.Services
                 query = query.Where(c => c.CSPUserId == cspUserId.Value);
 
             return await query.FirstOrDefaultAsync();
+        }
+
+        public async Task<Commission> UpdateCommissionAsync(Commission commission)
+        {
+            _context.Commissions.Update(commission);
+            await _context.SaveChangesAsync();
+            return commission;
+        }
+
+        public async Task<bool> DeleteCommissionAsync(Guid commissionId)
+        {
+            var commission = await _context.Commissions
+                .FirstOrDefaultAsync(c => c.CommissionId == commissionId && !c.IsDeleted);
+
+            if (commission == null) return false;
+
+            commission.IsDeleted = true;
+            await _context.SaveChangesAsync();
+            return true;
         }
 
         public async Task<Commission?> UpdateCommissionStatusAsync(Guid commissionId, string status, int updatedByUserId, string? remarks = null)

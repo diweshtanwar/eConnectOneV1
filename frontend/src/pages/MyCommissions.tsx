@@ -20,8 +20,10 @@ import {
   TableHead,
   TableRow,
   Paper,
+  ToggleButtonGroup,
+  ToggleButton,
 } from '@mui/material';
-import { MonetizationOn, TrendingUp, Receipt } from '@mui/icons-material';
+import { MonetizationOn, TrendingUp, Receipt, ViewModule, ViewList } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/api';
 
@@ -58,6 +60,7 @@ export const MyCommissions: React.FC = () => {
   const [selectedMonth, setSelectedMonth] = useState<number | ''>('');
   const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [selectedCommission, setSelectedCommission] = useState<Commission | null>(null);
+  const [viewMode, setViewMode] = useState<'tile' | 'list'>('tile');
 
   useEffect(() => {
     fetchCommissions();
@@ -126,7 +129,20 @@ export const MyCommissions: React.FC = () => {
           <MonetizationOn />
           My Commissions
         </Typography>
-        <Box sx={{ display: 'flex', gap: 2 }}>
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+          <ToggleButtonGroup
+            value={viewMode}
+            exclusive
+            onChange={(_, newMode) => newMode && setViewMode(newMode)}
+            size="small"
+          >
+            <ToggleButton value="tile">
+              <ViewModule fontSize="small" />
+            </ToggleButton>
+            <ToggleButton value="list">
+              <ViewList fontSize="small" />
+            </ToggleButton>
+          </ToggleButtonGroup>
           <FormControl size="small" sx={{ minWidth: 120 }}>
             <InputLabel>Year</InputLabel>
             <Select
@@ -228,7 +244,7 @@ export const MyCommissions: React.FC = () => {
             Please contact support if you believe this is an error.
           </Typography>
         </Alert>
-      ) : (
+      ) : viewMode === 'tile' ? (
         <Grid container spacing={3}>
           {commissions.map((commission) => (
             <Grid item xs={12} md={6} lg={4} key={commission.commissionId}>
@@ -293,6 +309,53 @@ export const MyCommissions: React.FC = () => {
             </Grid>
           ))}
         </Grid>
+      ) : (
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Period</TableCell>
+                <TableCell>Base Commission</TableCell>
+                <TableCell>Bonus</TableCell>
+                <TableCell>Deductions</TableCell>
+                <TableCell>Tax</TableCell>
+                <TableCell>Net Payable</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell>Payment Date</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {commissions.map((commission) => (
+                <TableRow 
+                  key={commission.commissionId}
+                  hover
+                  sx={{ cursor: 'pointer' }}
+                  onClick={() => setSelectedCommission(commission)}
+                >
+                  <TableCell>{getMonthName(commission.month)} {commission.year}</TableCell>
+                  <TableCell>₹{commission.baseCommission.toLocaleString()}</TableCell>
+                  <TableCell>₹{commission.bonusCommission.toLocaleString()}</TableCell>
+                  <TableCell>₹{commission.deductions.toLocaleString()}</TableCell>
+                  <TableCell>₹{commission.taxDeducted.toLocaleString()}</TableCell>
+                  <TableCell><strong>₹{commission.netPayable.toLocaleString()}</strong></TableCell>
+                  <TableCell>
+                    <Chip
+                      label={commission.status}
+                      color={getStatusColor(commission.status)}
+                      size="small"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    {commission.paymentDate 
+                      ? new Date(commission.paymentDate).toLocaleDateString()
+                      : '-'
+                    }
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
       )}
 
       {/* Commission Detail Dialog */}

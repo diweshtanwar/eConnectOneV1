@@ -14,9 +14,9 @@ export default defineConfig({
       '/api': {
         //target: 'http://localhost:5001',
         // Use Railway backend if VITE_USE_RAILWAY=true, otherwise use local
-       target: process.env.VITE_USE_RAILWAY === 'true' 
+      target: process.env.VITE_USE_RAILWAY === 'true' 
         ? 'https://econnectonev1-production.up.railway.app'          
-        : 'http://localhost:5001',
+       : 'http://localhost:5001',
         changeOrigin: true,
         secure: false
       }

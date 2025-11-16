@@ -37,10 +37,16 @@ namespace eConnectOne.API.Controllers
             if (!int.TryParse(userIdClaim, out int userId))
                 return Unauthorized();
 
-            var wallet = await _walletService.EnsureWalletExistsAsync(userId);
-            await _context.Entry(wallet).Reference(w => w.User).LoadAsync();
-
-            return Ok(wallet);
+            try
+            {
+                var wallet = await _walletService.EnsureWalletExistsAsync(userId);
+                await _context.Entry(wallet).Reference(w => w.User).LoadAsync();
+                return Ok(wallet);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Failed to retrieve wallet", error = ex.Message });
+            }
         }
 
         [HttpGet("transactions")]
@@ -56,14 +62,14 @@ namespace eConnectOne.API.Controllers
                 return Unauthorized();
 
             var wallet = await _context.Wallets
+                .AsNoTracking()
                 .FirstOrDefaultAsync(w => w.UserId == userId);
 
             if (wallet == null)
                 return NotFound("Wallet not found");
 
             var query = _context.WalletTransactions
-                .Include(t => t.Ticket)
-                .Include(t => t.CreatedByUser)
+                .AsNoTracking()
                 .Where(t => t.WalletId == wallet.WalletId);
 
             // Apply filters
@@ -79,6 +85,15 @@ namespace eConnectOne.API.Controllers
                 .OrderByDescending(t => t.CreatedDate)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
+                .Select(t => new {
+                    t.TransactionId,
+                    t.TransactionType,
+                    t.Amount,
+                    t.BalanceAfter,
+                    t.Description,
+                    t.Status,
+                    t.CreatedDate
+                })
                 .ToListAsync();
 
             return Ok(new {
@@ -91,7 +106,7 @@ namespace eConnectOne.API.Controllers
         }
 
         [HttpPost("adjust")]
-        [Authorize(Roles = "Master Admin")]
+        [Authorize(Roles = "Master Admin,Admin")]
         public async Task<ActionResult> AdjustBalance(
             [FromBody] AdjustBalanceRequest request)
         {
@@ -99,11 +114,7 @@ namespace eConnectOne.API.Controllers
             if (!int.TryParse(adminIdClaim, out int adminId))
                 return Unauthorized();
 
-            var wallet = await _context.Wallets
-                .FirstOrDefaultAsync(w => w.UserId == request.UserId);
-
-            if (wallet == null)
-                return NotFound("Wallet not found");
+            var wallet = await _walletService.EnsureWalletExistsAsync(request.UserId);
 
             var oldBalance = wallet.Balance;
             wallet.Balance += request.Amount;

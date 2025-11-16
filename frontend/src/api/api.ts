@@ -25,14 +25,12 @@ export const deleteBroadcast = async (id: number) => {
 };
 // --- Audit Log API ---
 export const auditApi = {
-  // Clean audit logs before a specific date
-  cleanLogsBeforeDate: async (date: string) => {
-    const response = await api.post('/AuditLogs/clean', { beforeDate: date });
+  getAllLogs: async () => {
+    const response = await api.get('/AuditLogs');
     return response.data;
   },
-  // Clean audit logs older than N days
-  cleanLogsOlderThanDays: async (days: number) => {
-    const response = await api.post('/AuditLogs/clean', { days });
+  cleanLogsBeforeDate: async (date: string) => {
+    const response = await api.post(`/AuditLogs/clean?cutoffDate=${date}`);
     return response.data;
   },
 };
@@ -380,6 +378,17 @@ export interface UnlockAccountDto {
   resetPassword: boolean;
 }
 
+export interface UserFullDetailsDto extends UserResponseDto {
+  userDetails?: any;
+  documents?: Array<{
+    id: number;
+    code: string;
+    documentType: string;
+    documentPath: string;
+    uploadedDate: string;
+  }>;
+}
+
 export const userApi = {
   getCurrentUser: async () => {
     const response = await api.get('/users/me');
@@ -387,6 +396,10 @@ export const userApi = {
   },
   getAllUsers: async (pageNumber: number = 1, pageSize: number = 10) => {
     const response = await api.get<UserResponseDto[]>(`/users?pageNumber=${pageNumber}&pageSize=${pageSize}`);
+    return response.data;
+  },
+  getAllUsersWithFullDetails: async () => {
+    const response = await api.get<UserFullDetailsDto[]>('/users/full-details');
     return response.data;
   },
   getUserById: async (id: number) => {
@@ -794,6 +807,14 @@ export const commissionApi = {
   },
   createCommission: async (commission: any) => {
     const response = await api.post('/commission', commission);
+    return response.data;
+  },
+  updateCommission: async (commissionId: string, commission: any) => {
+    const response = await api.put(`/commission/${commissionId}`, commission);
+    return response.data;
+  },
+  deleteCommission: async (commissionId: string) => {
+    const response = await api.delete(`/commission/${commissionId}`);
     return response.data;
   },
   updateCommissionStatus: async (commissionId: string, status: string, remarks?: string) => {

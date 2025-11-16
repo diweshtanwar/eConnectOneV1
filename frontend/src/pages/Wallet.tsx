@@ -61,6 +61,7 @@ export const Wallet: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [typeFilter, setTypeFilter] = useState('ALL');
+  const [error, setError] = useState<string>('');
   const pageSize = 20;
 
 
@@ -71,6 +72,7 @@ export const Wallet: React.FC = () => {
   const fetchWalletData = async () => {
     try {
       setLoading(true);
+      setError('');
       const params = new URLSearchParams({
         page: page.toString(),
         pageSize: pageSize.toString(),
@@ -85,9 +87,12 @@ export const Wallet: React.FC = () => {
       
       setWallet(walletResponse.data);
       setTransactions(transactionsResponse.data.transactions || transactionsResponse.data);
-      setTotalPages(Math.ceil((transactionsResponse.data.total || transactionsResponse.data.length) / pageSize));
-    } catch (error) {
+      setTotalPages(Math.ceil((transactionsResponse.data.totalPages || transactionsResponse.data.total || transactionsResponse.data.length) / pageSize));
+    } catch (error: any) {
       console.error('Error fetching wallet data:', error);
+      setError(error.response?.data || error.message || 'Failed to load wallet data');
+      setWallet(null);
+      setTransactions([]);
     } finally {
       setLoading(false);
     }
@@ -133,6 +138,16 @@ export const Wallet: React.FC = () => {
         My Wallet
       </Typography>
 
+      {error && (
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="body1" color="error.main" sx={{ fontWeight: 500, background: '#fff1f0', border: '1px solid #ffa39e', borderRadius: 2, p: 2 }}>
+            <b>Error:</b> {error}
+            <br />
+            <Typography variant="caption">Your wallet may not be created yet. Please contact an administrator to set up your wallet.</Typography>
+          </Typography>
+        </Box>
+      )}
+
       {/* Wallet Disclaimer Note */}
       <Box sx={{ mb: 2 }}>
         <Typography variant="body2" color="warning.main" sx={{ fontWeight: 500, background: '#fffbe6', border: '1px solid #ffe58f', borderRadius: 2, p: 2 }}>
@@ -149,7 +164,7 @@ export const Wallet: React.FC = () => {
                 Available Balance
               </Typography>
               <Typography variant="h3" color="primary" gutterBottom>
-                ₹{wallet?.balance?.toLocaleString() || '0.00'}
+                ₹{wallet?.balance !== undefined ? wallet.balance.toLocaleString() : '0.00'}
               </Typography>
               {wallet?.pendingAmount && wallet.pendingAmount > 0 && (
                 <Typography variant="body2" color="text.secondary">

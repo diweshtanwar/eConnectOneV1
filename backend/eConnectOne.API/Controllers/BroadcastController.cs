@@ -13,7 +13,7 @@ namespace eConnectOne.API.Controllers
     {
         private readonly ApplicationDbContext _context;
 
-        public BroadcastController(ApplicationDbContext context)
+         public BroadcastController(ApplicationDbContext context)
         {
             _context = context;
         }
@@ -31,7 +31,7 @@ namespace eConnectOne.API.Controllers
                 Priority = dto.Priority ?? "Normal",
                 SentByUserId = userId,
                 TargetRoles = dto.TargetRoles ?? "All",
-                ExpiresAt = dto.ExpiresAt
+                ExpiresAt = dto.ExpiresAt.HasValue ? DateTime.SpecifyKind(dto.ExpiresAt.Value, DateTimeKind.Utc) : null
             };
 
             _context.Broadcasts.Add(broadcast);
@@ -118,7 +118,7 @@ namespace eConnectOne.API.Controllers
             broadcast.Message = dto.Message;
             broadcast.Priority = dto.Priority ?? broadcast.Priority;
             broadcast.TargetRoles = dto.TargetRoles ?? broadcast.TargetRoles;
-            broadcast.ExpiresAt = dto.ExpiresAt;
+            broadcast.ExpiresAt = dto.ExpiresAt.HasValue ? DateTime.SpecifyKind(dto.ExpiresAt.Value, DateTimeKind.Utc) : null;
             await _context.SaveChangesAsync();
             return Ok(new { message = "Broadcast updated successfully" });
         }
@@ -212,7 +212,7 @@ namespace eConnectOne.API.Controllers
 
     private int GetCurrentUserId()
         {
-            var userIdClaim = User.FindFirst("id")?.Value;
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
             return int.TryParse(userIdClaim, out var userId) ? userId : 1;
         }
     }

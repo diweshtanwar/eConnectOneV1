@@ -37,6 +37,12 @@ export const MENU_CONFIG: MenuItem[] = [
     permission: PERMISSIONS.COMMISSION_MANAGEMENT 
   },
   { 
+    text: 'Wallet Management', 
+    icon: <AccountBalanceWallet />, 
+    path: '/wallet-management', 
+    roles: ['Master Admin', 'Admin'] 
+  },
+  { 
     text: 'Audit Logs', 
     icon: <HistoryIcon />, 
     path: '/auditlogs', 

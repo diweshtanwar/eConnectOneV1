@@ -109,6 +109,45 @@ namespace eConnectOne.API.Controllers
             }
         }
 
+        [HttpPut("{commissionId}")]
+        [Authorize(Roles = "Master Admin")]
+        public async Task<ActionResult> UpdateCommission(string commissionId, [FromBody] UpdateCommissionRequest request)
+        {
+            if (!Guid.TryParse(commissionId, out var id))
+                return BadRequest("Invalid commission ID");
+
+            var commission = await _commissionService.GetCommissionAsync(id, null);
+            if (commission == null)
+                return NotFound();
+
+            commission.Month = request.Month;
+            commission.Year = request.Year;
+            commission.BaseCommission = request.BaseCommission;
+            commission.BonusCommission = request.BonusCommission;
+            commission.Deductions = request.Deductions;
+            commission.TaxDeducted = request.TaxDeducted;
+            commission.Description = request.Description;
+            commission.TotalCommission = commission.BaseCommission + commission.BonusCommission - commission.Deductions;
+            commission.NetPayable = commission.TotalCommission - commission.TaxDeducted;
+
+            await _commissionService.UpdateCommissionAsync(commission);
+            return Ok(commission);
+        }
+
+        [HttpDelete("{commissionId}")]
+        [Authorize(Roles = "Master Admin")]
+        public async Task<ActionResult> DeleteCommission(string commissionId)
+        {
+            if (!Guid.TryParse(commissionId, out var id))
+                return BadRequest("Invalid commission ID");
+
+            var result = await _commissionService.DeleteCommissionAsync(id);
+            if (!result)
+                return NotFound();
+
+            return Ok(new { message = "Commission deleted successfully" });
+        }
+
         [HttpPut("{commissionId}/status")]
         [Authorize(Roles = "Master Admin,Admin")]
         public async Task<ActionResult> UpdateCommissionStatus(string commissionId, [FromBody] UpdateStatusRequest request)
@@ -171,6 +210,17 @@ namespace eConnectOne.API.Controllers
         public decimal CommissionRate { get; set; }
         public decimal CommissionAmount { get; set; }
         public string? Notes { get; set; }
+    }
+
+    public class UpdateCommissionRequest
+    {
+        public int Month { get; set; }
+        public int Year { get; set; }
+        public decimal BaseCommission { get; set; }
+        public decimal BonusCommission { get; set; }
+        public decimal Deductions { get; set; }
+        public decimal TaxDeducted { get; set; }
+        public string? Description { get; set; }
     }
 
     public class UpdateStatusRequest

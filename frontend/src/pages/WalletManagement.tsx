@@ -42,13 +42,15 @@ export const WalletManagement: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [searchTerm, setSearchTerm] = useState('');
   const pageSize = 50;
-  const [depositDialog, setDepositDialog] = useState(false);
+  const [adjustDialog, setAdjustDialog] = useState(false);
   const [limitsDialog, setLimitsDialog] = useState(false);
   const [bulkDialog, setBulkDialog] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
-  const [depositAmount, setDepositAmount] = useState('');
-  const [depositDescription, setDepositDescription] = useState('');
+  const [adjustAmount, setAdjustAmount] = useState('');
+  const [adjustType, setAdjustType] = useState<'deposit' | 'withdrawal'>('deposit');
+  const [adjustDescription, setAdjustDescription] = useState('');
+  const [adjustError, setAdjustError] = useState<any>(null);
   const [bulkAmount, setBulkAmount] = useState('');
   const [bulkDescription, setBulkDescription] = useState('');
   const [bulkType, setBulkType] = useState<'deposit' | 'withdrawal'>('deposit');
@@ -108,23 +110,34 @@ export const WalletManagement: React.FC = () => {
     }
   };
 
-  const handleDeposit = async () => {
-    if (!selectedUser || !depositAmount) return;
+  const handleAdjustBalance = async () => {
+    if (!selectedUser || !adjustAmount) return;
+    setAdjustError(null);
     
     try {
+      const amount = adjustType === 'withdrawal' ? -parseFloat(adjustAmount) : parseFloat(adjustAmount);
       await walletApi.adjustBalance(
         selectedUser.id, 
-        parseFloat(depositAmount), 
-        depositDescription || `Admin deposit: ₹${depositAmount}`
+        amount, 
+        adjustDescription || `Admin ${adjustType}: ₹${adjustAmount}`
       );
       
-      setMessage(`Successfully deposited ₹${depositAmount} to ${selectedUser.fullName || selectedUser.username}`);
-      setDepositDialog(false);
-      setDepositAmount('');
-      setDepositDescription('');
+      setMessage(`Successfully ${adjustType === 'deposit' ? 'deposited' : 'withdrew'} ₹${adjustAmount} ${adjustType === 'deposit' ? 'to' : 'from'} ${selectedUser.fullName || selectedUser.username}`);
+      setAdjustDialog(false);
+      setAdjustAmount('');
+      setAdjustDescription('');
+      setAdjustError(null);
       fetchData();
-    } catch (error) {
-      setMessage('Failed to process deposit');
+    } catch (error: any) {
+      console.error('Adjust balance error:', error);
+      setAdjustError({
+        message: error.response?.data?.message || error.message || `Failed to process ${adjustType}`,
+        status: error.response?.status,
+        url: error.config?.url,
+        method: error.config?.method,
+        data: error.response?.data,
+        fullError: JSON.stringify(error.response || error, null, 2)
+      });
     }
   };
 
@@ -189,9 +202,13 @@ export const WalletManagement: React.FC = () => {
     setBulkDialog(true);
   };
 
-  const openDepositDialog = (user: User) => {
+  const openAdjustDialog = (user: User, type: 'deposit' | 'withdrawal') => {
     setSelectedUser(user);
-    setDepositDialog(true);
+    setAdjustType(type);
+    setAdjustAmount('');
+    setAdjustDescription('');
+    setAdjustError(null);
+    setAdjustDialog(true);
   };
 
   const openLimitsDialog = async (user: User) => {
@@ -373,10 +390,20 @@ export const WalletManagement: React.FC = () => {
                           <Button
                             size="small"
                             variant="contained"
+                            color="success"
                             startIcon={<Add />}
-                            onClick={() => openDepositDialog(user)}
+                            onClick={() => openAdjustDialog(user, 'deposit')}
                           >
                             Deposit
+                          </Button>
+                          <Button
+                            size="small"
+                            variant="contained"
+                            color="error"
+                            startIcon={<Download />}
+                            onClick={() => openAdjustDialog(user, 'withdrawal')}
+                          >
+                            Withdraw
                           </Button>
                           <Button
                             size="small"
@@ -408,20 +435,59 @@ export const WalletManagement: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Deposit Dialog */}
-      <Dialog open={depositDialog} onClose={() => setDepositDialog(false)} maxWidth="sm" fullWidth>
+      {/* Adjust Balance Dialog */}
+      <Dialog open={adjustDialog} onClose={() => setAdjustDialog(false)} maxWidth="md" fullWidth>
         <DialogTitle>
-          Deposit to {selectedUser?.fullName || selectedUser?.username}
+          {adjustType === 'deposit' ? 'Deposit to' : 'Withdraw from'} {selectedUser?.fullName || selectedUser?.username}
         </DialogTitle>
         <DialogContent>
+          {!adjustError && (
+            <Alert severity={adjustType === 'deposit' ? 'info' : 'warning'} sx={{ mb: 2 }}>
+              This will {adjustType === 'deposit' ? 'add' : 'deduct'} the amount {adjustType === 'deposit' ? 'to' : 'from'} the user's wallet balance.
+            </Alert>
+          )}
+          {adjustError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              <Typography variant="subtitle2" fontWeight="bold">Error: {adjustError.message}</Typography>
+              {adjustError.status && <Typography variant="body2">Status Code: {adjustError.status}</Typography>}
+              {adjustError.url && <Typography variant="body2">Endpoint: {adjustError.method?.toUpperCase()} {adjustError.url}</Typography>}
+              {adjustError.data && (
+                <Box sx={{ mt: 1 }}>
+                  <Typography variant="caption" fontWeight="bold">Response Data:</Typography>
+                  <pre style={{ fontSize: '10px', overflow: 'auto', maxHeight: '100px', background: '#f5f5f5', padding: '8px', borderRadius: '4px' }}>
+                    {JSON.stringify(adjustError.data, null, 2)}
+                  </pre>
+                </Box>
+              )}
+              <Box sx={{ mt: 1 }}>
+                <Typography variant="caption" fontWeight="bold">Debug Info:</Typography>
+                <pre style={{ fontSize: '10px', overflow: 'auto', maxHeight: '150px', background: '#f5f5f5', padding: '8px', borderRadius: '4px' }}>
+                  {adjustError.fullError}
+                </pre>
+              </Box>
+            </Alert>
+          )}
           <Grid container spacing={2} sx={{ mt: 1 }}>
+            <Grid item xs={12}>
+              <FormControl fullWidth>
+                <InputLabel>Transaction Type</InputLabel>
+                <Select
+                  value={adjustType}
+                  label="Transaction Type"
+                  onChange={(e) => setAdjustType(e.target.value as 'deposit' | 'withdrawal')}
+                >
+                  <MenuItem value="deposit">Deposit (Add Money)</MenuItem>
+                  <MenuItem value="withdrawal">Withdrawal (Deduct Money)</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
             <Grid item xs={12}>
               <TextField
                 fullWidth
                 label="Amount"
                 type="number"
-                value={depositAmount}
-                onChange={(e) => setDepositAmount(e.target.value)}
+                value={adjustAmount}
+                onChange={(e) => setAdjustAmount(e.target.value)}
                 InputProps={{
                   startAdornment: <Typography sx={{ mr: 1 }}>₹</Typography>
                 }}
@@ -433,21 +499,22 @@ export const WalletManagement: React.FC = () => {
                 label="Description"
                 multiline
                 rows={3}
-                value={depositDescription}
-                onChange={(e) => setDepositDescription(e.target.value)}
-                placeholder="Reason for deposit..."
+                value={adjustDescription}
+                onChange={(e) => setAdjustDescription(e.target.value)}
+                placeholder={`Reason for ${adjustType}...`}
               />
             </Grid>
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDepositDialog(false)}>Cancel</Button>
+          <Button onClick={() => { setAdjustDialog(false); setAdjustError(null); }}>Cancel</Button>
           <Button
-            onClick={handleDeposit}
+            onClick={handleAdjustBalance}
             variant="contained"
-            disabled={!depositAmount || parseFloat(depositAmount) <= 0}
+            color={adjustType === 'deposit' ? 'success' : 'error'}
+            disabled={!adjustAmount || parseFloat(adjustAmount) <= 0}
           >
-            Deposit ₹{depositAmount}
+            {adjustType === 'deposit' ? 'Deposit' : 'Withdraw'} ₹{adjustAmount}
           </Button>
         </DialogActions>
       </Dialog>

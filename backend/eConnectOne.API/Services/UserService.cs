@@ -185,6 +185,7 @@ namespace eConnectOne.API.Services
                 query = query.Where(u => u.Id == currentUserId.Value);
             }
             var users = await query
+                .OrderBy(u => u.Id)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .Include(u => u.Role)
@@ -376,6 +377,93 @@ namespace eConnectOne.API.Services
             user.UpdatedDate = DateTime.UtcNow;
             await _context.SaveChangesAsync();
             return true;
+        }
+
+        public async Task<IEnumerable<UserFullDetailsDto>> GetAllUsersWithFullDetailsAsync()
+        {
+            var users = await _context.Users.Where(u => !u.IsDeleted).OrderBy(u => u.Id).Include(u => u.Role).ToListAsync();
+            var result = new List<UserFullDetailsDto>();
+            foreach (var user in users)
+            {
+                var roleName = user.Role?.Name ?? "Unknown";
+                var fullDetails = new UserFullDetailsDto
+                {
+                    Id = user.Id,
+                    Username = user.Username,
+                    Email = user.Email,
+                    FullName = user.FullName,
+                    MobileNumber = user.MobileNumber,
+                    EmergencyContactNumber = user.EmergencyContactNumber,
+                    FatherName = user.FatherName,
+                    MotherName = user.MotherName,
+                    RoleName = roleName,
+                    RoleId = user.RoleId,
+                    IsActive = user.IsActive,
+                    CreatedAt = user.CreatedAt,
+                    LastLoginAt = user.LastLoginAt
+                };
+
+                if (roleName != "CSP")
+                {
+                    fullDetails.GeneralDetails = await _context.GeneralUserDetails
+                        .Where(g => g.UserId == user.Id && !g.IsDeleted)
+                        .Select(g => new GeneralUserDetailDto
+                        {
+                            Id = g.Id,
+                            Address = g.Address,
+                            Qualification = g.Qualification,
+                            ProfilePicSource = g.ProfilePicSource,
+                            CityId = g.CityId,
+                            StateId = g.StateId,
+                            DepartmentId = g.DepartmentId,
+                            DesignationId = g.DesignationId
+                        })
+                        .FirstOrDefaultAsync();
+                }
+                else
+                {
+                    fullDetails.UserDetails = await _context.UserDetails
+                        .Where(c => c.UserId == user.Id && !c.IsDeleted)
+                        .Select(c => new UserDetailDto
+                        {
+                            Id = c.Id,
+                            UserId = c.UserId,
+                            Name = c.Name,
+                            Code = c.Code,
+                            BranchCode = c.BranchCode,
+                            ExpiryDate = c.ExpiryDate,
+                            BankName = c.BankName,
+                            BankAccount = c.BankAccount,
+                            IFSC = c.IFSC,
+                            CertificateStatus = c.CertificateStatus,
+                            StatusId = c.StatusId,
+                            CountryId = c.CountryId,
+                            StateId = c.StateId,
+                            CityId = c.CityId,
+                            LocationId = c.LocationId,
+                            Category = c.Category,
+                            PAN = c.PAN,
+                            VoterId = c.VoterId,
+                            AadharNo = c.AadharNo,
+                            Education = c.Education
+                        })
+                        .FirstOrDefaultAsync();
+
+                    fullDetails.Documents = await _context.UserDocuments
+                        .Where(d => d.UserId == user.Id && !d.IsDeleted)
+                        .Select(d => new UserDocumentDto
+                        {
+                            Id = d.Id,
+                            Code = d.Code,
+                            DocumentType = d.DocumentType,
+                            DocumentPath = d.DocumentPath,
+                            UploadedDate = d.UploadedDate
+                        })
+                        .ToListAsync();
+                }
+                result.Add(fullDetails);
+            }
+            return result;
         }
     }
 }

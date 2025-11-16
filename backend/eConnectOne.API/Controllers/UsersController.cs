@@ -37,6 +37,14 @@ namespace eConnectOne.API.Controllers
             return Ok(users);
         }
 
+        // GET: api/Users/full-details
+        [HttpGet("full-details")]
+        public async Task<ActionResult<IEnumerable<UserFullDetailsDto>>> GetAllUsersWithFullDetails()
+        {
+            var users = await _userService.GetAllUsersWithFullDetailsAsync();
+            return Ok(users);
+        }
+
         // GET: api/Users/5
         [HttpGet("{id}")]
         public async Task<ActionResult<UserResponseDto>> GetUser(int id)
