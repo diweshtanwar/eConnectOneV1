@@ -74,6 +74,19 @@ namespace eConnectOne.API.Controllers
         {
             var userId = GetCurrentUserId();
             
+            // Prevent sending message to self
+            if (dto.ToUserId == userId)
+            {
+                return BadRequest(new { message = "You cannot send a message to yourself" });
+            }
+            
+            // Validate recipient exists
+            var recipientExists = await _context.Users.AnyAsync(u => u.Id == dto.ToUserId && !u.IsDeleted);
+            if (!recipientExists)
+            {
+                return BadRequest(new { message = "Recipient user not found" });
+            }
+            
             var message = new Message
             {
                 FromUserId = userId,
