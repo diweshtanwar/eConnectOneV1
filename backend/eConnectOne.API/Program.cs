@@ -27,9 +27,9 @@ if (!string.IsNullOrEmpty(databaseUrl) && databaseUrl.StartsWith("postgresql://"
         var port = uri.Port > 0 ? uri.Port : 5432;
         var database = uri.LocalPath.TrimStart('/');
         
-        connectionString = $"Server={uri.Host};Port={port};Database={database};User Id={userInfo[0]};Password={password};SSL Mode=Require;";
+        connectionString = $"Server={uri.Host};Port={port};Database={database};User Id={userInfo[0]};Password={password};SSL Mode=Require;Allow IPv6=false;";
         Console.WriteLine($"✅ DATABASE_URL converted successfully: Server={uri.Host}");
-        Console.WriteLine($"   Database={database}, Port={port}");
+        Console.WriteLine($"   Database={database}, Port={port}, SSL=Required, IPv6=Disabled");
     }
     catch (Exception ex)
     {
