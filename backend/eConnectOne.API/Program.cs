@@ -66,7 +66,7 @@ try
         options.UseNpgsql(connectionString, npgsqlOptions =>
         {
             npgsqlOptions.CommandTimeout(30);
-            npgsqlOptions.EnableRetryOnFailure(maxRetryCount: 3, maxRetryDelaySeconds: 5, errorCodesToAdd: null);
+            npgsqlOptions.EnableRetryOnFailure(maxRetryCount: 3);
         }));
     Console.WriteLine("✅ DbContext configured successfully with Npgsql");
 }
