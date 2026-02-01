@@ -27,9 +27,10 @@ if (!string.IsNullOrEmpty(databaseUrl) && databaseUrl.StartsWith("postgresql://"
         var port = uri.Port > 0 ? uri.Port : 5432;
         var database = uri.LocalPath.TrimStart('/');
         
-        connectionString = $"Server={uri.Host};Port={port};Database={database};User Id={userInfo[0]};Password={password};SSL Mode=Require;Trust Server Certificate=true;";
+        connectionString = $"Server={uri.Host};Port={port};Database={database};User Id={userInfo[0]};Password={password};SSL Mode=Require;Trust Server Certificate=true;CommandTimeout=30;Pooling=false;";
         Console.WriteLine($"✅ DATABASE_URL converted successfully: Server={uri.Host}");
         Console.WriteLine($"   Database={database}, Port={port}, SSL=Required, TrustServerCert=true");
+        Console.WriteLine($"   Full connection string configured with timeout and pooling disabled");
     }
     catch (Exception ex)
     {
@@ -49,8 +50,21 @@ else
 }
 
 // Add services to the container.
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(connectionString));
+try
+{
+    builder.Services.AddDbContext<ApplicationDbContext>(options =>
+        options.UseNpgsql(connectionString, npgsqlOptions =>
+        {
+            npgsqlOptions.CommandTimeout(30);
+            npgsqlOptions.EnableRetryOnFailure(maxRetryCount: 3, maxRetryDelaySeconds: 5, errorCodesToAdd: null);
+        }));
+    Console.WriteLine("✅ DbContext configured successfully with Npgsql");
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"❌ ERROR configuring DbContext: {ex.Message}");
+    throw;
+}
 
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IUserService, UserService>();
