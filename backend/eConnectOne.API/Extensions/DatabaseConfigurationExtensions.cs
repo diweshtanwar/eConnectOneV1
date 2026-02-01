@@ -46,6 +46,10 @@ public static class DatabaseConfigurationExtensions
             {
                 options.LogTo(Console.WriteLine);
             }
+
+            // Suppress shadow property warnings from navigation properties
+            options.ConfigureWarnings(w => 
+                w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
         });
 
         return services;

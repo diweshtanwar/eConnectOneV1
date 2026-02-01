@@ -22,11 +22,9 @@ namespace eConnectOne.API.Services
 
         public async Task<IEnumerable<UserResponseDto>> GetUsersByRoleAsync(int? roleId = null)
         {
-            // Optimized: Load all users with related data in single query using Include
+            // Optimized: Load all users with role data in single query
             var query = _context.Users
                 .Include(u => u.Role)
-                .Include(u => u.GeneralUserDetails)
-                .Include(u => u.UserDetails)
                 .Where(u => !u.IsDeleted);
 
             if (roleId.HasValue)
@@ -36,11 +34,21 @@ namespace eConnectOne.API.Services
 
             var users = await query.ToListAsync();
 
-            // Map to DTOs using pre-loaded data, no additional queries needed
-            return users.Select(MapUserToResponseDto).ToList();
+            // Map to DTOs using pre-loaded role data
+            var userIds = users.Select(u => u.Id).ToList();
+            var generalDetails = await _context.GeneralUserDetails
+                .Where(g => userIds.Contains(g.UserId))
+                .ToListAsync();
+            var userDetails = await _context.UserDetails
+                .Where(u => userIds.Contains(u.UserId))
+                .ToListAsync();
+
+            return users.Select(u => MapUserToResponseDto(u, 
+                generalDetails.FirstOrDefault(g => g.UserId == u.Id),
+                userDetails.FirstOrDefault(ud => ud.UserId == u.Id))).ToList();
         }
 
-        private UserResponseDto MapUserToResponseDto(User user)
+        private UserResponseDto MapUserToResponseDto(User user, GeneralUserDetails? generalDetails = null, UserDetails? userDetails = null)
         {
             var roleName = user.Role?.Name ?? "Unknown";
 
@@ -61,45 +69,45 @@ namespace eConnectOne.API.Services
                 LastLoginAt = user.LastLoginAt
             };
 
-            // Include GeneralUserDetails if applicable (data already loaded via Include)
-            if (roleName != "CSP" && user.GeneralUserDetails != null)
+            // Include GeneralUserDetails if applicable
+            if (roleName != "CSP" && generalDetails != null)
             {
                 responseDto.GeneralDetails = new GeneralUserDetailDto
                 {
-                    Id = user.GeneralUserDetails.Id,
-                    Address = user.GeneralUserDetails.Address,
-                    Qualification = user.GeneralUserDetails.Qualification,
-                    ProfilePicSource = user.GeneralUserDetails.ProfilePicSource,
-                    CityId = user.GeneralUserDetails.CityId,
-                    StateId = user.GeneralUserDetails.StateId,
-                    DepartmentId = user.GeneralUserDetails.DepartmentId,
-                    DesignationId = user.GeneralUserDetails.DesignationId
+                    Id = generalDetails.Id,
+                    Address = generalDetails.Address,
+                    Qualification = generalDetails.Qualification,
+                    ProfilePicSource = generalDetails.ProfilePicSource,
+                    CityId = generalDetails.CityId,
+                    StateId = generalDetails.StateId,
+                    DepartmentId = generalDetails.DepartmentId,
+                    DesignationId = generalDetails.DesignationId
                 };
             }
-            else if (roleName == "CSP" && user.UserDetails != null)
+            else if (roleName == "CSP" && userDetails != null)
             {
                 responseDto.UserDetails = new UserDetailDto
                 {
-                    Id = user.UserDetails.Id,
-                    UserId = user.UserDetails.UserId,
-                    Name = user.UserDetails.Name,
-                    Code = user.UserDetails.Code,
-                    BranchCode = user.UserDetails.BranchCode,
-                    ExpiryDate = user.UserDetails.ExpiryDate,
-                    BankName = user.UserDetails.BankName,
-                    BankAccount = user.UserDetails.BankAccount,
-                    IFSC = user.UserDetails.IFSC,
-                    CertificateStatus = user.UserDetails.CertificateStatus,
-                    StatusId = user.UserDetails.StatusId,
-                    CountryId = user.UserDetails.CountryId,
-                    StateId = user.UserDetails.StateId,
-                    CityId = user.UserDetails.CityId,
-                    LocationId = user.UserDetails.LocationId,
-                    Category = user.UserDetails.Category,
-                    PAN = user.UserDetails.PAN,
-                    VoterId = user.UserDetails.VoterId,
-                    AadharNo = user.UserDetails.AadharNo,
-                    Education = user.UserDetails.Education
+                    Id = userDetails.Id,
+                    UserId = userDetails.UserId,
+                    Name = userDetails.Name,
+                    Code = userDetails.Code,
+                    BranchCode = userDetails.BranchCode,
+                    ExpiryDate = userDetails.ExpiryDate,
+                    BankName = userDetails.BankName,
+                    BankAccount = userDetails.BankAccount,
+                    IFSC = userDetails.IFSC,
+                    CertificateStatus = userDetails.CertificateStatus,
+                    StatusId = userDetails.StatusId,
+                    CountryId = userDetails.CountryId,
+                    StateId = userDetails.StateId,
+                    CityId = userDetails.CityId,
+                    LocationId = userDetails.LocationId,
+                    Category = userDetails.Category,
+                    PAN = userDetails.PAN,
+                    VoterId = userDetails.VoterId,
+                    AadharNo = userDetails.AadharNo,
+                    Education = userDetails.Education
                 };
             }
 
@@ -143,29 +151,28 @@ namespace eConnectOne.API.Services
             await _context.SaveChangesAsync();
 
             // Create associated detail record based on role
+            GeneralUserDetails? generalDetails = null;
+            UserDetails? userDetails = null;
+
             if (roleName == "CSP")
             {
-                var userDetails = new UserDetails { UserId = user.Id, Code = cspCode!, CreatedDate = DateTime.UtcNow };
+                userDetails = new UserDetails { UserId = user.Id, Code = cspCode!, CreatedDate = DateTime.UtcNow };
                 _context.UserDetails.Add(userDetails);
-                user.UserDetails = userDetails;  // Set relation
             }
             else
             {
-                var generalDetails = new GeneralUserDetails { UserId = user.Id, CreatedDate = DateTime.UtcNow };
+                generalDetails = new GeneralUserDetails { UserId = user.Id, CreatedDate = DateTime.UtcNow };
                 _context.GeneralUserDetails.Add(generalDetails);
-                user.GeneralUserDetails = generalDetails;  // Set relation
             }
             await _context.SaveChangesAsync();
 
-            return MapUserToResponseDto(user);
+            return MapUserToResponseDto(user, generalDetails, userDetails);
         }
 
         public async Task<UserResponseDto?> GetUserByIdAsync(int id)
         {
             var user = await _context.Users
                                      .Include(u => u.Role)
-                                     .Include(u => u.GeneralUserDetails)
-                                     .Include(u => u.UserDetails)
                                      .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted);
 
             if (user == null)
@@ -173,15 +180,19 @@ namespace eConnectOne.API.Services
                 return null;
             }
 
-            return MapUserToResponseDto(user);
+            // Load related details
+            var generalDetails = await _context.GeneralUserDetails
+                .FirstOrDefaultAsync(g => g.UserId == user.Id);
+            var userDetails = await _context.UserDetails
+                .FirstOrDefaultAsync(ud => ud.UserId == user.Id);
+
+            return MapUserToResponseDto(user, generalDetails, userDetails);
         }
 
         public async Task<IEnumerable<UserResponseDto>> GetAllUsersAsync(int pageNumber, int pageSize, int? currentUserId = null, string? currentUserRole = null)
         {
             var query = _context.Users
                 .Include(u => u.Role)
-                .Include(u => u.GeneralUserDetails)
-                .Include(u => u.UserDetails)
                 .Where(u => !u.IsDeleted);
 
             if (currentUserRole == "CSP" && currentUserId.HasValue)
@@ -195,16 +206,25 @@ namespace eConnectOne.API.Services
                 .Take(pageSize)
                 .ToListAsync();
 
-            // Map to DTOs using pre-loaded data, no additional queries needed
-            return users.Select(MapUserToResponseDto).ToList();
+            // Load all details in batch (efficient N+1 prevention)
+            var userIds = users.Select(u => u.Id).ToList();
+            var generalDetails = await _context.GeneralUserDetails
+                .Where(g => userIds.Contains(g.UserId))
+                .ToListAsync();
+            var userDetails = await _context.UserDetails
+                .Where(u => userIds.Contains(u.UserId))
+                .ToListAsync();
+
+            // Map to DTOs using pre-loaded data
+            return users.Select(u => MapUserToResponseDto(u,
+                generalDetails.FirstOrDefault(g => g.UserId == u.Id),
+                userDetails.FirstOrDefault(ud => ud.UserId == u.Id))).ToList();
         }
 
         public async Task<UserResponseDto> UpdateUserAsync(int id, UserUpdateDto userDto)
         {
             var user = await _context.Users
                 .Include(u => u.Role)
-                .Include(u => u.GeneralUserDetails)
-                .Include(u => u.UserDetails)
                 .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted);
 
             if (user == null)
@@ -227,27 +247,26 @@ namespace eConnectOne.API.Services
             user.UpdatedDate = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
-            // Refresh user data after update
-            await _context.Entry(user).ReloadAsync();
-            await _context.Entry(user).Reference(u => u.Role).LoadAsync();
+            // Load related details
+            var generalDetails = await _context.GeneralUserDetails
+                .FirstOrDefaultAsync(g => g.UserId == user.Id);
+            var userDetails = await _context.UserDetails
+                .FirstOrDefaultAsync(ud => ud.UserId == user.Id);
 
-            return MapUserToResponseDto(user);
+            return MapUserToResponseDto(user, generalDetails, userDetails);
         }
 
         public async Task<UserResponseDto> UpdateGeneralUserDetailsAsync(int userId, GeneralUserDetailDto detailsDto)
         {
             var user = await _context.Users
                 .Include(u => u.Role)
-                .Include(u => u.GeneralUserDetails)
-                .Include(u => u.UserDetails)
                 .FirstOrDefaultAsync(u => u.Id == userId && !u.IsDeleted);
 
             if (user == null)
             {
                 throw new KeyNotFoundException($"User with ID {userId} not found.");
             }
-            var generalDetails = user.GeneralUserDetails ?? 
-                (await _context.GeneralUserDetails.FirstOrDefaultAsync(g => g.UserId == user.Id && !g.IsDeleted));
+            var generalDetails = await _context.GeneralUserDetails.FirstOrDefaultAsync(g => g.UserId == user.Id && !g.IsDeleted);
 
             if (generalDetails == null)
             {
@@ -264,7 +283,11 @@ namespace eConnectOne.API.Services
             generalDetails.UpdatedDate = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
-            return MapUserToResponseDto(user);
+            // Load user details as well
+            var userDetails = await _context.UserDetails
+                .FirstOrDefaultAsync(ud => ud.UserId == user.Id);
+
+            return MapUserToResponseDto(user, generalDetails, userDetails);
         }
 
     public async Task<UserResponseDto> UpdateUserDetailsAsync(int userId, UserDetailDto detailsDto)

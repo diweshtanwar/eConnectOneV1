@@ -53,11 +53,11 @@ namespace eConnectOne.API.Migrations
 
             // Priority 3 Indexes: Business Logic Queries
 
-            // Commissions table - Commission reporting by user, year, month
+            // Commissions table - Commission reporting by CSP user, year, month
             migrationBuilder.CreateIndex(
-                name: "idx_commissions_userid_year_month",
+                name: "idx_commissions_cspuserid_year_month",
                 table: "Commissions",
-                columns: new[] { "UserId", "Year", "Month" });
+                columns: new[] { "CSPUserId", "Year", "Month" });
 
             // UserDetails table - Foreign key to Users lookup (CSP user details)
             migrationBuilder.CreateIndex(
@@ -95,7 +95,7 @@ namespace eConnectOne.API.Migrations
                 table: "Users");
 
             migrationBuilder.DropIndex(
-                name: "idx_commissions_userid_year_month",
+                name: "idx_commissions_cspuserid_year_month",
                 table: "Commissions");
 
             migrationBuilder.DropIndex(
