@@ -9,8 +9,14 @@ using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Use connection string from appsettings.json (Railway public hostname)
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+// Try to get DATABASE_URL from environment first (for Supabase/Render)
+// If not found, fall back to appsettings connection string for local development
+var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL") 
+    ?? builder.Configuration.GetConnectionString("DefaultConnection");
+
+Console.WriteLine(string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DATABASE_URL")) 
+    ? "Using local connection string from appsettings" 
+    : "Using Supabase DATABASE_URL from environment");
 
 // Add services to the container.
 builder.Services.AddDbContext<ApplicationDbContext>(options =>

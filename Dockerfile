@@ -24,8 +24,8 @@ WORKDIR /app
 
 COPY --from=build /app/publish .
 
-# Expose port
-EXPOSE 5000
-ENV ASPNETCORE_URLS=http://+:5000
+# Expose port 10000 for Render
+EXPOSE 10000
+ENV ASPNETCORE_URLS=http://+:10000
 
 ENTRYPOINT ["dotnet", "eConnectOne.API.dll"]
