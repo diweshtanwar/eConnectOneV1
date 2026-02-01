@@ -19,18 +19,33 @@ var connectionString = databaseUrl ?? builder.Configuration.GetConnectionString(
 // EF Format: Server=host;Port=port;Database=database;User Id=user;Password=password;
 if (!string.IsNullOrEmpty(databaseUrl) && databaseUrl.StartsWith("postgresql://"))
 {
-    var uri = new Uri(databaseUrl);
-    var userInfo = uri.UserInfo.Split(':');
-    connectionString = $"Server={uri.Host};Port={uri.Port};Database={uri.LocalPath.TrimStart('/')};User Id={userInfo[0]};Password={userInfo[1]};";
-    Console.WriteLine("✅ Using Supabase DATABASE_URL from environment (converted from URI format)");
+    try
+    {
+        var uri = new Uri(databaseUrl);
+        var userInfo = uri.UserInfo.Split(':');
+        var password = userInfo.Length > 1 ? userInfo[1] : "";
+        var port = uri.Port > 0 ? uri.Port : 5432;
+        var database = uri.LocalPath.TrimStart('/');
+        
+        connectionString = $"Server={uri.Host};Port={port};Database={database};User Id={userInfo[0]};Password={password};SSL Mode=Require;";
+        Console.WriteLine($"✅ DATABASE_URL converted successfully: Server={uri.Host}");
+        Console.WriteLine($"   Database={database}, Port={port}");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"❌ ERROR converting DATABASE_URL: {ex.Message}");
+        Console.WriteLine($"   DATABASE_URL: {databaseUrl}");
+        throw;
+    }
 }
 else if (!string.IsNullOrEmpty(databaseUrl))
 {
-    Console.WriteLine("✅ Using DATABASE_URL from environment");
+    Console.WriteLine("✅ Using DATABASE_URL from environment (already in correct format)");
 }
 else
 {
     Console.WriteLine("📍 Using local connection string from appsettings");
+    Console.WriteLine($"   Connection String: {connectionString}");
 }
 
 // Add services to the container.
