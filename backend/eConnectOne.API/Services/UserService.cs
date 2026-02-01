@@ -22,26 +22,27 @@ namespace eConnectOne.API.Services
 
         public async Task<IEnumerable<UserResponseDto>> GetUsersByRoleAsync(int? roleId = null)
         {
-            var query = _context.Users.AsQueryable();
+            // Optimized: Load all users with related data in single query using Include
+            var query = _context.Users
+                .Include(u => u.Role)
+                .Include(u => u.GeneralUserDetails)
+                .Include(u => u.UserDetails)
+                .Where(u => !u.IsDeleted);
+
             if (roleId.HasValue)
             {
                 query = query.Where(u => u.RoleId == roleId.Value);
             }
+
             var users = await query.ToListAsync();
-            var result = new List<UserResponseDto>();
-            foreach (var user in users)
-            {
-                result.Add(await MapUserToResponseDto(user));
-            }
-            return result;
+
+            // Map to DTOs using pre-loaded data, no additional queries needed
+            return users.Select(MapUserToResponseDto).ToList();
         }
 
-        private async Task<UserResponseDto> MapUserToResponseDto(User user)
+        private UserResponseDto MapUserToResponseDto(User user)
         {
-            var roleName = await _context.Roles
-                                         .Where(r => r.Id == user.RoleId && !r.IsDeleted)
-                                         .Select(r => r.Name)
-                                         .FirstOrDefaultAsync() ?? "Unknown";
+            var roleName = user.Role?.Name ?? "Unknown";
 
             var responseDto = new UserResponseDto
             {
@@ -60,54 +61,46 @@ namespace eConnectOne.API.Services
                 LastLoginAt = user.LastLoginAt
             };
 
-            // Include GeneralUserDetails if applicable
-            if (roleName != "CSP")
+            // Include GeneralUserDetails if applicable (data already loaded via Include)
+            if (roleName != "CSP" && user.GeneralUserDetails != null)
             {
-                var generalDetails = await _context.GeneralUserDetails
-                                                   .Where(g => g.UserId == user.Id)
-                                                   .Select(g => new GeneralUserDetailDto
-                                                   {
-                                                       Id = g.Id,
-                                                       Address = g.Address,
-                                                       Qualification = g.Qualification,
-                                                       ProfilePicSource = g.ProfilePicSource,
-                                                       CityId = g.CityId,
-                                                       StateId = g.StateId,
-                                                       DepartmentId = g.DepartmentId,
-                                                       DesignationId = g.DesignationId
-                                                   })
-                                                   .FirstOrDefaultAsync();
-                responseDto.GeneralDetails = generalDetails;
+                responseDto.GeneralDetails = new GeneralUserDetailDto
+                {
+                    Id = user.GeneralUserDetails.Id,
+                    Address = user.GeneralUserDetails.Address,
+                    Qualification = user.GeneralUserDetails.Qualification,
+                    ProfilePicSource = user.GeneralUserDetails.ProfilePicSource,
+                    CityId = user.GeneralUserDetails.CityId,
+                    StateId = user.GeneralUserDetails.StateId,
+                    DepartmentId = user.GeneralUserDetails.DepartmentId,
+                    DesignationId = user.GeneralUserDetails.DesignationId
+                };
             }
-            else if (roleName == "CSP")
+            else if (roleName == "CSP" && user.UserDetails != null)
             {
-                var userDetails = await _context.UserDetails
-                                               .Where(c => c.UserId == user.Id)
-                                               .Select(c => new UserDetailDto
-                                               {
-                                                   Id = c.Id,
-                                                   UserId = c.UserId,
-                                                   Name = c.Name,
-                                                   Code = c.Code,
-                                                   BranchCode = c.BranchCode,
-                                                   ExpiryDate = c.ExpiryDate,
-                                                   BankName = c.BankName,
-                                                   BankAccount = c.BankAccount,
-                                                   IFSC = c.IFSC,
-                                                   CertificateStatus = c.CertificateStatus,
-                                                   StatusId = c.StatusId,
-                                                   CountryId = c.CountryId,
-                                                   StateId = c.StateId,
-                                                   CityId = c.CityId,
-                                                   LocationId = c.LocationId,
-                                                   Category = c.Category,
-                                                   PAN = c.PAN,
-                                                   VoterId = c.VoterId,
-                                                   AadharNo = c.AadharNo,
-                                                   Education = c.Education
-                                               })
-                                               .FirstOrDefaultAsync();
-                responseDto.UserDetails = userDetails;
+                responseDto.UserDetails = new UserDetailDto
+                {
+                    Id = user.UserDetails.Id,
+                    UserId = user.UserDetails.UserId,
+                    Name = user.UserDetails.Name,
+                    Code = user.UserDetails.Code,
+                    BranchCode = user.UserDetails.BranchCode,
+                    ExpiryDate = user.UserDetails.ExpiryDate,
+                    BankName = user.UserDetails.BankName,
+                    BankAccount = user.UserDetails.BankAccount,
+                    IFSC = user.UserDetails.IFSC,
+                    CertificateStatus = user.UserDetails.CertificateStatus,
+                    StatusId = user.UserDetails.StatusId,
+                    CountryId = user.UserDetails.CountryId,
+                    StateId = user.UserDetails.StateId,
+                    CityId = user.UserDetails.CityId,
+                    LocationId = user.UserDetails.LocationId,
+                    Category = user.UserDetails.Category,
+                    PAN = user.UserDetails.PAN,
+                    VoterId = user.UserDetails.VoterId,
+                    AadharNo = user.UserDetails.AadharNo,
+                    Education = user.UserDetails.Education
+                };
             }
 
             return responseDto;
@@ -116,7 +109,8 @@ namespace eConnectOne.API.Services
         public async Task<UserResponseDto> CreateUserAsync(UserCreateDto userDto)
         {
             // Always use the provided username, do not overwrite
-            var roleName = await _context.Roles.Where(r => r.Id == userDto.RoleId).Select(r => r.Name).FirstOrDefaultAsync();
+            var role = await _context.Roles.FirstOrDefaultAsync(r => r.Id == userDto.RoleId);
+            var roleName = role?.Name;
 
             // For CSP, Username = CSPCode (enforced)
             string username = userDto.Username;
@@ -141,7 +135,8 @@ namespace eConnectOne.API.Services
                 MotherName = userDto.MotherName,
                 CreatedAt = DateTime.UtcNow,
                 IsActive = true,
-                IsDeleted = false
+                IsDeleted = false,
+                Role = role  // Set the role relation to avoid additional query
             };
 
             _context.Users.Add(user);
@@ -152,21 +147,25 @@ namespace eConnectOne.API.Services
             {
                 var userDetails = new UserDetails { UserId = user.Id, Code = cspCode!, CreatedDate = DateTime.UtcNow };
                 _context.UserDetails.Add(userDetails);
+                user.UserDetails = userDetails;  // Set relation
             }
             else
             {
                 var generalDetails = new GeneralUserDetails { UserId = user.Id, CreatedDate = DateTime.UtcNow };
                 _context.GeneralUserDetails.Add(generalDetails);
+                user.GeneralUserDetails = generalDetails;  // Set relation
             }
             await _context.SaveChangesAsync();
 
-            return await MapUserToResponseDto(user);
+            return MapUserToResponseDto(user);
         }
 
         public async Task<UserResponseDto?> GetUserByIdAsync(int id)
         {
             var user = await _context.Users
                                      .Include(u => u.Role)
+                                     .Include(u => u.GeneralUserDetails)
+                                     .Include(u => u.UserDetails)
                                      .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted);
 
             if (user == null)
@@ -174,33 +173,40 @@ namespace eConnectOne.API.Services
                 return null;
             }
 
-            return await MapUserToResponseDto(user);
+            return MapUserToResponseDto(user);
         }
 
         public async Task<IEnumerable<UserResponseDto>> GetAllUsersAsync(int pageNumber, int pageSize, int? currentUserId = null, string? currentUserRole = null)
         {
-            var query = _context.Users.Where(u => !u.IsDeleted);
+            var query = _context.Users
+                .Include(u => u.Role)
+                .Include(u => u.GeneralUserDetails)
+                .Include(u => u.UserDetails)
+                .Where(u => !u.IsDeleted);
+
             if (currentUserRole == "CSP" && currentUserId.HasValue)
             {
                 query = query.Where(u => u.Id == currentUserId.Value);
             }
+
             var users = await query
                 .OrderBy(u => u.Id)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
-                .Include(u => u.Role)
                 .ToListAsync();
-            var userResponseDtos = new List<UserResponseDto>();
-            foreach (var user in users)
-            {
-                userResponseDtos.Add(await MapUserToResponseDto(user));
-            }
-            return userResponseDtos;
+
+            // Map to DTOs using pre-loaded data, no additional queries needed
+            return users.Select(MapUserToResponseDto).ToList();
         }
 
         public async Task<UserResponseDto> UpdateUserAsync(int id, UserUpdateDto userDto)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted);
+            var user = await _context.Users
+                .Include(u => u.Role)
+                .Include(u => u.GeneralUserDetails)
+                .Include(u => u.UserDetails)
+                .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted);
+
             if (user == null)
             {
                 throw new KeyNotFoundException($"User with ID {id} not found.");
@@ -220,17 +226,29 @@ namespace eConnectOne.API.Services
             user.IsActive = userDto.IsActive ?? user.IsActive;
             user.UpdatedDate = DateTime.UtcNow;
             await _context.SaveChangesAsync();
-            return await MapUserToResponseDto(user);
+
+            // Refresh user data after update
+            await _context.Entry(user).ReloadAsync();
+            await _context.Entry(user).Reference(u => u.Role).LoadAsync();
+
+            return MapUserToResponseDto(user);
         }
 
         public async Task<UserResponseDto> UpdateGeneralUserDetailsAsync(int userId, GeneralUserDetailDto detailsDto)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId && !u.IsDeleted);
+            var user = await _context.Users
+                .Include(u => u.Role)
+                .Include(u => u.GeneralUserDetails)
+                .Include(u => u.UserDetails)
+                .FirstOrDefaultAsync(u => u.Id == userId && !u.IsDeleted);
+
             if (user == null)
             {
                 throw new KeyNotFoundException($"User with ID {userId} not found.");
             }
-            var generalDetails = await _context.GeneralUserDetails.FirstOrDefaultAsync(g => g.UserId == user.Id && !g.IsDeleted);
+            var generalDetails = user.GeneralUserDetails ?? 
+                (await _context.GeneralUserDetails.FirstOrDefaultAsync(g => g.UserId == user.Id && !g.IsDeleted));
+
             if (generalDetails == null)
             {
                 generalDetails = new GeneralUserDetails { UserId = user.Id, CreatedDate = DateTime.UtcNow };
@@ -245,7 +263,8 @@ namespace eConnectOne.API.Services
             generalDetails.DesignationId = detailsDto.DesignationId ?? generalDetails.DesignationId;
             generalDetails.UpdatedDate = DateTime.UtcNow;
             await _context.SaveChangesAsync();
-            return await MapUserToResponseDto(user);
+
+            return MapUserToResponseDto(user);
         }
 
     public async Task<UserResponseDto> UpdateUserDetailsAsync(int userId, UserDetailDto detailsDto)
@@ -281,7 +300,7 @@ namespace eConnectOne.API.Services
             userDetails.Education = detailsDto.Education ?? userDetails.Education;
             userDetails.UpdatedDate = DateTime.UtcNow;
             await _context.SaveChangesAsync();
-            return await MapUserToResponseDto(user);
+            return MapUserToResponseDto(user);
         }
 
         public async Task<bool> SoftDeleteUserAsync(int id)

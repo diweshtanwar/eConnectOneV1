@@ -50,13 +50,35 @@ namespace eConnectOne.API.Services
 
         public async Task<List<ReconciliationResult>> ReconcileAllWalletsAsync()
         {
-            var wallets = await _context.Wallets.ToListAsync();
+            // Optimized: Load all wallets with transactions in a single query
+            var wallets = await _context.Wallets
+                .AsSplitQuery()
+                .Include(w => w.Transactions)
+                .ToListAsync();
+
+            // Process all wallets in-memory, no additional queries needed
             var results = new List<ReconciliationResult>();
 
             foreach (var wallet in wallets)
             {
-                var result = await ReconcileWalletAsync(wallet.WalletId);
-                results.Add(result);
+                var calculatedBalance = wallet.Transactions?
+                    .Where(t => t.Status == "COMPLETED")
+                    .Sum(t => t.Amount) ?? 0;
+
+                var difference = wallet.Balance - calculatedBalance;
+                var status = Math.Abs(difference) < 0.01m ? "MATCHED" : "MISMATCH";
+
+                results.Add(new ReconciliationResult
+                {
+                    WalletId = wallet.WalletId,
+                    UserId = wallet.UserId,
+                    RecordedBalance = wallet.Balance,
+                    CalculatedBalance = calculatedBalance,
+                    Difference = difference,
+                    Status = status,
+                    TransactionCount = wallet.Transactions?.Count ?? 0,
+                    CheckedAt = DateTime.UtcNow
+                });
             }
 
             return results;

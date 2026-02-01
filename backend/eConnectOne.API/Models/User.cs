@@ -33,6 +33,10 @@ namespace eConnectOne.API.Models
         [ForeignKey("RoleId")]
         public Role? Role { get; set; } // Navigation property to the Role entity
 
+        // Navigation properties for related details
+        public GeneralUserDetails? GeneralUserDetails { get; set; }
+        public UserDetails? UserDetails { get; set; }
+
         public DateTime CreatedAt { get; set; }
         public DateTime? LastLoginAt { get; set; }
         public DateTime? UpdatedDate { get; set; } // Added this line
