@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: eConnectOne-API
+    runtime: dotnet
+    runtimeVersion: 9.0.0
+    buildCommand: bash render-build.sh
+    startCommand: cd backend/eConnectOne.API && dotnet eConnectOne.API.dll
+    envVars:
+      - key: DOTNET_ENV
+        value: Production
