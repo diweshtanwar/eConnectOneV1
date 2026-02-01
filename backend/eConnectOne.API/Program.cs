@@ -1,7 +1,9 @@
 using System.Text;
 using eConnectOne.API.Data;
+using eConnectOne.API.Extensions;
+using eConnectOne.API.Models.Configuration;
 using eConnectOne.API.Services;
-using eConnectOne.API.Services.Tickets; // Added for new services
+using eConnectOne.API.Services.Tickets;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -9,80 +11,32 @@ using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Try to get DATABASE_URL from environment first (for Supabase/Render)
-// If not found, fall back to appsettings connection string for local development
+// Configure strongly-typed options from appsettings
+builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
+builder.Services.Configure<DatabaseOptions>(builder.Configuration.GetSection("Database"));
+builder.Services.Configure<CorsOptions>(builder.Configuration.GetSection("Cors"));
+
+// Get DATABASE_URL from environment (supports Railway, Render, AWS, Azure)
+// Falls back to appsettings configuration if not set
 var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
-var connectionString = databaseUrl ?? builder.Configuration.GetConnectionString("DefaultConnection");
 
-// Convert PostgreSQL URI format to Entity Framework compatible format
-// PostgreSQL URI: postgresql://user:password@host:port/database
-// EF Format: Server=host;Port=port;Database=database;User Id=user;Password=password;
-if (!string.IsNullOrEmpty(databaseUrl) && databaseUrl.StartsWith("postgresql://"))
-{
-    try
-    {
-        var uri = new Uri(databaseUrl);
-        var userInfo = uri.UserInfo.Split(':');
-        var password = userInfo.Length > 1 ? userInfo[1] : "";
-        var port = uri.Port > 0 ? uri.Port : 5432;
-        var database = uri.LocalPath.TrimStart('/');
-        var host = uri.Host;
-        
-        // Determine connection type (pooler or direct)
-        bool isPooler = host.Contains("pooler.supabase.com");
-        string poolType = port == 6543 ? "Transaction Pooler" : (isPooler ? "Session Pooler" : "Direct");
-        
-        // For pooler connections, Npgsql pooling should be enabled (let Supabase handle it)
-        // For direct connections, disable pooling at Npgsql level
-        bool npgsqlPooling = isPooler;
-        
-        connectionString = $"Server={host};Port={port};Database={database};User Id={userInfo[0]};Password={password};SSL Mode=Require;Trust Server Certificate=true;CommandTimeout=30;Pooling={npgsqlPooling};";
-        Console.WriteLine($"✅ DATABASE_URL converted successfully");
-        Console.WriteLine($"   Connection Type: {poolType}");
-        Console.WriteLine($"   Server: {host}, Port: {port}");
-        Console.WriteLine($"   Database: {database}, Npgsql Pooling: {npgsqlPooling}");
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"❌ ERROR converting DATABASE_URL: {ex.Message}");
-        Console.WriteLine($"   DATABASE_URL: {databaseUrl}");
-        throw;
-    }
-}
-else if (!string.IsNullOrEmpty(databaseUrl))
-{
-    Console.WriteLine("✅ Using DATABASE_URL from environment (already in correct format)");
-}
-else
-{
-    Console.WriteLine("📍 Using local connection string from appsettings");
-    Console.WriteLine($"   Connection String: {connectionString}");
-}
-
-// Add services to the container.
+// Add database configuration
 try
 {
-    builder.Services.AddDbContext<ApplicationDbContext>(options =>
-        options.UseNpgsql(connectionString, npgsqlOptions =>
-        {
-            npgsqlOptions.CommandTimeout(30);
-            npgsqlOptions.EnableRetryOnFailure(maxRetryCount: 3);
-        }));
-    Console.WriteLine("✅ DbContext configured successfully with Npgsql");
+    builder.Services.AddDatabaseConfiguration(databaseUrl, builder.Configuration);
+    Console.WriteLine("✅ Database configuration added successfully");
 }
 catch (Exception ex)
 {
-    Console.WriteLine($"❌ ERROR configuring DbContext: {ex.Message}");
+    Console.WriteLine($"❌ ERROR configuring database: {ex.Message}");
     throw;
 }
 
+// Register application services
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IRoleService, RoleService>();
 builder.Services.AddScoped<IAuditLogService, AuditLogService>();
-
-
-// Register new Ticket Management Services
 builder.Services.AddScoped<ITicketService, TicketService>();
 builder.Services.AddScoped<IAttachmentService, AttachmentService>();
 builder.Services.AddScoped<IWalletService, WalletService>();
@@ -91,6 +45,13 @@ builder.Services.AddScoped<IReconciliationService, ReconciliationService>();
 builder.Services.AddScoped<ILimitValidationService, LimitValidationService>();
 builder.Services.AddScoped<ICommissionService, CommissionService>();
 builder.Services.AddScoped<IEnhancedAuditLogService, EnhancedAuditLogService>();
+
+// Configure JWT authentication using typed options
+var jwtOptions = builder.Configuration.GetSection("Jwt").Get<JwtOptions>();
+if (jwtOptions == null)
+{
+    throw new InvalidOperationException("JWT configuration section is missing in appsettings.json");
+}
 
 builder.Services.AddAuthentication(options =>
 {
@@ -105,9 +66,9 @@ builder.Services.AddAuthentication(options =>
         ValidateAudience = true,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
-        ValidIssuer = builder.Configuration["Jwt:Issuer"],
-        ValidAudience = builder.Configuration["Jwt:Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
+        ValidIssuer = jwtOptions.Issuer,
+        ValidAudience = jwtOptions.Audience,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.Key))
     };
 });
 
