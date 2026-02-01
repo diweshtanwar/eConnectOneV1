@@ -26,11 +26,21 @@ if (!string.IsNullOrEmpty(databaseUrl) && databaseUrl.StartsWith("postgresql://"
         var password = userInfo.Length > 1 ? userInfo[1] : "";
         var port = uri.Port > 0 ? uri.Port : 5432;
         var database = uri.LocalPath.TrimStart('/');
+        var host = uri.Host;
         
-        connectionString = $"Server={uri.Host};Port={port};Database={database};User Id={userInfo[0]};Password={password};SSL Mode=Require;Trust Server Certificate=true;CommandTimeout=30;Pooling=false;";
-        Console.WriteLine($"✅ DATABASE_URL converted successfully: Server={uri.Host}");
-        Console.WriteLine($"   Database={database}, Port={port}, SSL=Required, TrustServerCert=true");
-        Console.WriteLine($"   Full connection string configured with timeout and pooling disabled");
+        // Determine connection type (pooler or direct)
+        bool isPooler = host.Contains("pooler.supabase.com");
+        string poolType = port == 6543 ? "Transaction Pooler" : (isPooler ? "Session Pooler" : "Direct");
+        
+        // For pooler connections, Npgsql pooling should be enabled (let Supabase handle it)
+        // For direct connections, disable pooling at Npgsql level
+        bool npgsqlPooling = isPooler;
+        
+        connectionString = $"Server={host};Port={port};Database={database};User Id={userInfo[0]};Password={password};SSL Mode=Require;Trust Server Certificate=true;CommandTimeout=30;Pooling={npgsqlPooling};";
+        Console.WriteLine($"✅ DATABASE_URL converted successfully");
+        Console.WriteLine($"   Connection Type: {poolType}");
+        Console.WriteLine($"   Server: {host}, Port: {port}");
+        Console.WriteLine($"   Database: {database}, Npgsql Pooling: {npgsqlPooling}");
     }
     catch (Exception ex)
     {
