@@ -11,12 +11,27 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Try to get DATABASE_URL from environment first (for Supabase/Render)
 // If not found, fall back to appsettings connection string for local development
-var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL") 
-    ?? builder.Configuration.GetConnectionString("DefaultConnection");
+var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+var connectionString = databaseUrl ?? builder.Configuration.GetConnectionString("DefaultConnection");
 
-Console.WriteLine(string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DATABASE_URL")) 
-    ? "Using local connection string from appsettings" 
-    : "Using Supabase DATABASE_URL from environment");
+// Convert PostgreSQL URI format to Entity Framework compatible format
+// PostgreSQL URI: postgresql://user:password@host:port/database
+// EF Format: Server=host;Port=port;Database=database;User Id=user;Password=password;
+if (!string.IsNullOrEmpty(databaseUrl) && databaseUrl.StartsWith("postgresql://"))
+{
+    var uri = new Uri(databaseUrl);
+    var userInfo = uri.UserInfo.Split(':');
+    connectionString = $"Server={uri.Host};Port={uri.Port};Database={uri.LocalPath.TrimStart('/')};User Id={userInfo[0]};Password={userInfo[1]};";
+    Console.WriteLine("✅ Using Supabase DATABASE_URL from environment (converted from URI format)");
+}
+else if (!string.IsNullOrEmpty(databaseUrl))
+{
+    Console.WriteLine("✅ Using DATABASE_URL from environment");
+}
+else
+{
+    Console.WriteLine("📍 Using local connection string from appsettings");
+}
 
 // Add services to the container.
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
