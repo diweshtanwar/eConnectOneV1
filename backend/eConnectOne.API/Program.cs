@@ -1,6 +1,7 @@
 using System.Text;
 using eConnectOne.API.Data;
 using eConnectOne.API.Extensions;
+using eConnectOne.API.Models;
 using eConnectOne.API.Models.Configuration;
 using eConnectOne.API.Services;
 using eConnectOne.API.Services.Tickets;
@@ -162,12 +163,44 @@ try
     using (var scope = app.Services.CreateScope())
     {
         var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        dbContext.Database.Migrate();
+
+        // For local development, skip EF Core migrations and create the schema directly.
+        // This avoids issues with older or partially applied migration history on a fresh database.
+        dbContext.Database.EnsureCreated();
+
+        if (!dbContext.Users.Any())
+        {
+            var masterRole = dbContext.Roles.FirstOrDefault(r => r.Name == "Master Admin");
+            if (masterRole == null)
+            {
+                masterRole = new Role { Name = "Master Admin", IsDeleted = false };
+                dbContext.Roles.Add(masterRole);
+                dbContext.SaveChanges();
+            }
+
+            var passwordHash = BCrypt.Net.BCrypt.HashPassword("admin123");
+            var adminUser = new User
+            {
+                Username = "admin",
+                PasswordHash = passwordHash,
+                RoleId = masterRole.Id,
+                CreatedAt = DateTime.UtcNow,
+                IsActive = true,
+                IsDeleted = false,
+                Email = "admin@econnectone.local",
+                FullName = "System Administrator"
+            };
+
+            dbContext.Users.Add(adminUser);
+            dbContext.SaveChanges();
+
+            Console.WriteLine("✅ Seeded default admin user: admin / admin123");
+        }
     }
 }
-catch (Exception)
+catch (Exception ex)
 {
-    // Don't fail startup, continue
+    Console.WriteLine($"⚠️ Startup seeding warning: {ex.Message}");
 }
 
 app.Run();

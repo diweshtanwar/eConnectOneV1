@@ -115,9 +115,14 @@ public static class DatabaseConfigurationExtensions
         try
         {
             var uri = new Uri(postgresqlUri);
-            var userInfo = uri.UserInfo.Split(':');
-            var username = userInfo[0];
-            var password = userInfo.Length > 1 ? userInfo[1] : "";
+            var userInfo = uri.UserInfo;
+            var separatorIndex = userInfo.IndexOf(':');
+            var username = separatorIndex >= 0
+                ? Uri.UnescapeDataString(userInfo[..separatorIndex])
+                : Uri.UnescapeDataString(userInfo);
+            var password = separatorIndex >= 0
+                ? Uri.UnescapeDataString(userInfo[(separatorIndex + 1)..])
+                : string.Empty;
             var hostname = uri.Host;
             var port = uri.Port > 0 ? uri.Port : 5432;
             var database = uri.LocalPath.TrimStart('/');
@@ -129,13 +134,17 @@ public static class DatabaseConfigurationExtensions
             // For Supabase pooler (port 6543) or other managed poolers, let them handle pooling
             bool useNpgsqlPooling = (hostname.Contains("pooler.supabase.com") || port == 6543);
 
+            // Local Docker/Postgres connections should not require SSL.
+            // Cloud-managed providers generally require SSL.
+            var sslMode = ShouldUseSsl(hostname, postgresqlUri) ? "Require" : "Disable";
+
             // Build EF Core connection string
             var connectionString = $"Server={hostname};" +
                                    $"Port={port};" +
                                    $"Database={database};" +
                                    $"User Id={username};" +
                                    $"Password={password};" +
-                                   $"SSL Mode=Require;" +
+                                   $"SSL Mode={sslMode};" +
                                    $"Trust Server Certificate=true;" +
                                    $"CommandTimeout=30;" +
                                    $"Pooling={useNpgsqlPooling};";
@@ -190,5 +199,30 @@ public static class DatabaseConfigurationExtensions
             // Generic/unknown
             _ => $"PostgreSQL ({hostname}:{port})"
         };
+    }
+
+    private static bool ShouldUseSsl(string hostname, string postgresqlUri)
+    {
+        if (string.IsNullOrWhiteSpace(hostname))
+        {
+            return false;
+        }
+
+        var lowerHost = hostname.ToLowerInvariant();
+
+        // Local Docker Compose services and localhost should connect without SSL.
+        if (lowerHost == "localhost" || lowerHost == "127.0.0.1" || lowerHost == "postgres" || lowerHost == "host.docker.internal")
+        {
+            return false;
+        }
+
+        // Cloud-managed providers generally require SSL.
+        return lowerHost.Contains("supabase")
+            || lowerHost.Contains("railway")
+            || lowerHost.Contains("rds.amazonaws.com")
+            || lowerHost.Contains("postgres.database.azure.com")
+            || lowerHost.Contains("ondigitalocean.com")
+            || lowerHost.Contains("render")
+            || postgresqlUri.Contains("sslmode=require", StringComparison.OrdinalIgnoreCase);
     }
 }
