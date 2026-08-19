@@ -4,7 +4,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres@123
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres@123}
       POSTGRES_DB: eConnectOne
     volumes:
       - 'E:/Docker/wsl/DockerDesktopWSL/econnectone/postgres:/var/lib/postgresql/data'
@@ -16,8 +16,8 @@ services:
     depends_on:
       - postgres
     environment:
-      DATABASE_URL: "postgresql://postgres:postgres%40123@postgres:5432/eConnectOne"
-      ASPNETCORE_URLS: "http://+:10000"
+      DATABASE_URL: "postgresql://postgres:${POSTGRES_PASSWORD:-postgres@123}@postgres:5432/eConnectOne"
+      ASPNETCORE_PORT: "10000"
       DOTNET_ENVIRONMENT: Production
     ports:
       - '10000:10000'

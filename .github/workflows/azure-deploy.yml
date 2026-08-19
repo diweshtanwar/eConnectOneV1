@@ -1,0 +1,157 @@
+name: Build, Validate Database, and Deploy to Azure
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ${{ secrets.ACR_NAME }}.azurecr.io
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    outputs:
+      backend-image: ${{ env.REGISTRY }}/backend:${{ github.sha }}
+      frontend-image: ${{ env.REGISTRY }}/frontend:${{ github.sha }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Login to Azure Container Registry
+      run: |
+        echo "${{ secrets.ACR_PASSWORD }}" | docker login "${{ env.REGISTRY }}" \
+          --username "${{ secrets.ACR_USERNAME }}" --password-stdin
+    
+    - name: Build and push Backend image
+      run: |
+        echo "Building backend image: ${{ env.REGISTRY }}/backend:${{ github.sha }}"
+        docker build -f Dockerfile -t ${{ env.REGISTRY }}/backend:${{ github.sha }} -t ${{ env.REGISTRY }}/backend:latest .
+        docker push ${{ env.REGISTRY }}/backend:${{ github.sha }}
+        docker push ${{ env.REGISTRY }}/backend:latest
+        echo "✅ Backend image pushed successfully"
+    
+    - name: Build and push Frontend image
+      run: |
+        echo "Building frontend image: ${{ env.REGISTRY }}/frontend:${{ github.sha }}"
+        docker build -f frontend/Dockerfile \
+          --build-arg VITE_API_BASE_URL="https://${{ secrets.BACKEND_APP_NAME }}.azurewebsites.net/api" \
+          -t ${{ env.REGISTRY }}/frontend:${{ github.sha }} \
+          -t ${{ env.REGISTRY }}/frontend:latest ./frontend
+        docker push ${{ env.REGISTRY }}/frontend:${{ github.sha }}
+        docker push ${{ env.REGISTRY }}/frontend:latest
+        echo "✅ Frontend image pushed successfully"
+    
+    - name: Logout from Azure Container Registry
+      run: docker logout ${{ env.REGISTRY }}
+
+  validate-database:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+    - name: Check database connectivity and pending migrations
+      env:
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      run: |
+        test -n "$DATABASE_URL" || { echo "DATABASE_URL secret is required"; exit 1; }
+        docker run --rm --env DATABASE_URL="$DATABASE_URL" \
+          mcr.microsoft.com/dotnet/sdk:9.0 bash -c '
+            apt-get update -qq && apt-get install -y -qq postgresql-client >/dev/null
+            python3 - <<'"'"'PY'"'"'
+            import os
+            from urllib.parse import urlparse
+            parsed = urlparse(os.environ["DATABASE_URL"])
+            assert parsed.hostname and parsed.path, "DATABASE_URL must include host and database"
+            print(f"Database target: {parsed.hostname}{parsed.path}")
+            PY
+            pg_isready -d "$DATABASE_URL"
+          '
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Login to Azure
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Configure backend container and settings
+      env:
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
+      run: |
+        az webapp config container set \
+          --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+          --name "${{ secrets.BACKEND_APP_NAME }}" \
+          --docker-custom-image-name "${{ needs.build-and-push.outputs.backend-image }}" \
+          --docker-registry-server-url "https://${{ env.REGISTRY }}" \
+          --docker-registry-server-user "${{ secrets.ACR_USERNAME }}" \
+          --docker-registry-server-password "${{ secrets.ACR_PASSWORD }}"
+        az webapp config appsettings set \
+          --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+          --name "${{ secrets.BACKEND_APP_NAME }}" \
+          --settings DATABASE_URL="$DATABASE_URL" ASPNETCORE_URLS="http://+:80" DOTNET_ENVIRONMENT=Production JWT-SECRET-KEY="$JWT_SECRET_KEY"
+
+    - name: Configure frontend container
+      run: |
+        az webapp config container set \
+          --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+          --name "${{ secrets.FRONTEND_APP_NAME }}" \
+          --docker-custom-image-name "${{ needs.build-and-push.outputs.frontend-image }}" \
+          --docker-registry-server-url "https://${{ env.REGISTRY }}" \
+          --docker-registry-server-user "${{ secrets.ACR_USERNAME }}" \
+          --docker-registry-server-password "${{ secrets.ACR_PASSWORD }}"
+    
+    - name: Restart applications after configuration
+      run: |
+        az webapp restart --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" --name "${{ secrets.BACKEND_APP_NAME }}"
+        az webapp restart --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" --name "${{ secrets.FRONTEND_APP_NAME }}"
+    
+    - name: Verify Backend Deployment
+      run: |
+        echo "Waiting for backend to be ready..."
+        for i in {1..30}; do
+          if curl --fail --silent --show-error "https://${{ secrets.BACKEND_APP_NAME }}.azurewebsites.net/swagger/index.html" >/dev/null; then
+            echo "✅ Backend is responding"
+            exit 0
+          fi
+          echo "Waiting for backend... (attempt $i/30)"
+          sleep 10
+        done
+        echo "Backend did not become healthy"; exit 1
+    
+    - name: Verify Frontend Deployment
+      run: |
+        echo "Waiting for frontend to be ready..."
+        for i in {1..30}; do
+          if curl --fail --silent --show-error "https://${{ secrets.FRONTEND_APP_NAME }}.azurewebsites.net/health" >/dev/null; then
+            echo "✅ Frontend is responding"
+            exit 0
+          fi
+          echo "Waiting for frontend... (attempt $i/30)"
+          sleep 10
+        done
+        echo "Frontend did not become healthy"; exit 1
+    
+    - name: Display deployment URLs
+      run: |
+        BACKEND_URL=$(az webapp show --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} --name ${{ secrets.BACKEND_APP_NAME }} --query defaultHostName -o tsv)
+        FRONTEND_URL=$(az webapp show --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} --name ${{ secrets.FRONTEND_APP_NAME }} --query defaultHostName -o tsv)
+        echo "🚀 Deployment Complete!"
+        echo "Backend API: https://$BACKEND_URL"
+        echo "Frontend: https://$FRONTEND_URL"
+    
+    - name: Logout from Azure
+      run: az logout

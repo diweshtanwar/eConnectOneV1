@@ -24,8 +24,8 @@ WORKDIR /app
 
 COPY --from=build /app/publish .
 
-# Expose port 10000 for Render
-EXPOSE 10000
-ENV ASPNETCORE_URLS=http://+:10000
+# Expose ports: 80 for Azure App Service, 10000 for local dev
+EXPOSE 80 10000
+ENV ASPNETCORE_URLS=http://+:${ASPNETCORE_PORT:-80}
 
 ENTRYPOINT ["dotnet", "eConnectOne.API.dll"]

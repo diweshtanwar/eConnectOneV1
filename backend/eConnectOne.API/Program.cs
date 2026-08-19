@@ -49,6 +49,14 @@ builder.Services.AddScoped<IEnhancedAuditLogService, EnhancedAuditLogService>();
 
 // Configure JWT authentication using typed options
 var jwtOptions = builder.Configuration.GetSection("Jwt").Get<JwtOptions>();
+
+// Allow JWT key override from environment variable (for production/KV injection)
+var envJwtKey = Environment.GetEnvironmentVariable("JWT-SECRET-KEY");
+if (!string.IsNullOrEmpty(envJwtKey) && !envJwtKey.Contains("Microsoft.KeyVault"))
+{
+    jwtOptions.Key = envJwtKey;
+}
+
 if (jwtOptions == null)
 {
     throw new InvalidOperationException("JWT configuration section is missing in appsettings.json");
@@ -157,16 +165,21 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-// Initialize database on startup
+// Initialize database with EF Core migrations
 try
 {
     using (var scope = app.Services.CreateScope())
     {
         var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
-        // For local development, skip EF Core migrations and create the schema directly.
-        // This avoids issues with older or partially applied migration history on a fresh database.
-        dbContext.Database.EnsureCreated();
+        if (app.Environment.IsDevelopment())
+        {
+            dbContext.Database.EnsureCreated();
+        }
+        else
+        {
+            dbContext.Database.Migrate();
+        }
 
         if (!dbContext.Users.Any())
         {

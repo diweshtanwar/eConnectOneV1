@@ -1,42 +1,85 @@
-name: Build & Deploy Backend
+name: Build and Push Backend Image
 
 on:
   push:
     branches: [ main, develop ]
     paths:
       - 'backend/**'
-      - '.github/workflows/backend.yml'
+      - 'Dockerfile'
+      - '*.csproj'
   pull_request:
     branches: [ main, develop ]
+    paths:
+      - 'backend/**'
+      - 'Dockerfile'
+      - '*.csproj'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+  packages: write
 
 jobs:
-  build:
-    runs-on: windows-latest
-    
+  build-and-push:
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
+
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v3
-      with:
-        dotnet-version: '9.0.x'
-    
-    - name: Restore dependencies
-      run: dotnet restore backend/eConnectOne.API/eConnectOne.API.csproj
-    
-    - name: Build
-      run: dotnet build backend/eConnectOne.API/eConnectOne.API.csproj --configuration Release --no-restore
-    
-    - name: Run tests
-      run: dotnet test backend/ --configuration Release --no-build --verbosity normal
-      continue-on-error: true
-    
-    - name: Publish
-      run: dotnet publish backend/eConnectOne.API/eConnectOne.API.csproj -c Release -o ${{ runner.temp }}/backend
-    
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: backend-artifact
-        path: ${{ runner.temp }}/backend
-        retention-days: 5
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Azure Container Registry
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Extract ACR name from environment
+        id: acr
+        run: |
+          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            echo "name=creconnectoneprod" >> $GITHUB_OUTPUT
+          else
+            echo "name=creconnectonedev" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Log in to ACR
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ steps.acr.outputs.name }}.azurecr.io
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Set up .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore backend/eConnectOne.API/eConnectOne.API.csproj
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ${{ steps.acr.outputs.name }}.azurecr.io/econnectone-backend:${{ github.sha }}
+            ${{ steps.acr.outputs.name }}.azurecr.io/econnectone-backend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Image digest
+        run: echo "Image pushed: ${{ steps.acr.outputs.name }}.azurecr.io/econnectone-backend:${{ github.sha }}"
