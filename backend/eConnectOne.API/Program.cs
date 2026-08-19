@@ -52,9 +52,18 @@ var jwtOptions = builder.Configuration.GetSection("Jwt").Get<JwtOptions>();
 
 // Allow JWT key override from environment variable (for production/KV injection)
 var envJwtKey = Environment.GetEnvironmentVariable("JWT-SECRET-KEY");
-if (!string.IsNullOrEmpty(envJwtKey) && !envJwtKey.Contains("Microsoft.KeyVault"))
+if (jwtOptions != null && !string.IsNullOrEmpty(envJwtKey) && !envJwtKey.Contains("PLACEHOLDER"))
 {
     jwtOptions.Key = envJwtKey;
+}
+
+// Override AllowedHosts from env var for production (set to actual hostname)
+var allowedHosts = Environment.GetEnvironmentVariable("ALLOWED_HOSTS");
+if (!string.IsNullOrEmpty(allowedHosts) && !allowedHosts.Contains("PLACEHOLDER"))
+{
+    builder.WebHost.UseKestrel();
+    // AllowedHosts is applied via configuration — set it here
+    builder.Configuration["AllowedHosts"] = allowedHosts;
 }
 
 if (jwtOptions == null)
@@ -91,7 +100,8 @@ builder.Services.AddCors(options =>
                     "http://localhost:5174",           // Vite dev server alt port
                     "http://localhost:3001",           // Alternative dev port
                     "https://diweshtanwar.github.io",  // GitHub Pages root
-                    "https://diweshtanwar.github.io/eConnectOneV1"  // GitHub Pages subdirectory
+                    "https://diweshtanwar.github.io/eConnectOneV1",  // GitHub Pages subdirectory
+                    builder.Configuration["FRONTEND_ORIGIN"] ?? "https://localhost"  // Azure frontend
                 )
                    .AllowAnyHeader()
                    .AllowAnyMethod()
@@ -164,6 +174,9 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Health check endpoint — used by deployment pipeline and Azure
+app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));
 
 // Initialize database with EF Core migrations
 try

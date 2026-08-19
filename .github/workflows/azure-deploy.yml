@@ -1,157 +1,233 @@
-name: Build, Validate Database, and Deploy to Azure
+name: Deploy to Azure
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-    types: [opened, synchronize, reopened]
+    branches: [main]
   workflow_dispatch:
 
 env:
-  REGISTRY: ${{ secrets.ACR_NAME }}.azurecr.io
+  ENVIRONMENT: prod
+  # Short suffix added to globally-unique Azure resource names (ACR, PostgreSQL, Key Vault)
+  # Change this if you get a "name already taken" error on first deploy (2-6 lowercase chars)
+  UNIQUE_SUFFIX: ec1
 
 jobs:
-  build-and-push:
+  # ── 1. Provision Azure infrastructure (idempotent — safe every push) ──────
+  provision:
     runs-on: ubuntu-latest
     outputs:
-      backend-image: ${{ env.REGISTRY }}/backend:${{ github.sha }}
-      frontend-image: ${{ env.REGISTRY }}/frontend:${{ github.sha }}
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Login to Azure Container Registry
-      run: |
-        echo "${{ secrets.ACR_PASSWORD }}" | docker login "${{ env.REGISTRY }}" \
-          --username "${{ secrets.ACR_USERNAME }}" --password-stdin
-    
-    - name: Build and push Backend image
-      run: |
-        echo "Building backend image: ${{ env.REGISTRY }}/backend:${{ github.sha }}"
-        docker build -f Dockerfile -t ${{ env.REGISTRY }}/backend:${{ github.sha }} -t ${{ env.REGISTRY }}/backend:latest .
-        docker push ${{ env.REGISTRY }}/backend:${{ github.sha }}
-        docker push ${{ env.REGISTRY }}/backend:latest
-        echo "✅ Backend image pushed successfully"
-    
-    - name: Build and push Frontend image
-      run: |
-        echo "Building frontend image: ${{ env.REGISTRY }}/frontend:${{ github.sha }}"
-        docker build -f frontend/Dockerfile \
-          --build-arg VITE_API_BASE_URL="https://${{ secrets.BACKEND_APP_NAME }}.azurewebsites.net/api" \
-          -t ${{ env.REGISTRY }}/frontend:${{ github.sha }} \
-          -t ${{ env.REGISTRY }}/frontend:latest ./frontend
-        docker push ${{ env.REGISTRY }}/frontend:${{ github.sha }}
-        docker push ${{ env.REGISTRY }}/frontend:latest
-        echo "✅ Frontend image pushed successfully"
-    
-    - name: Logout from Azure Container Registry
-      run: docker logout ${{ env.REGISTRY }}
+      acr_login_server: ${{ steps.bicep.outputs.acr_login_server }}
+      acr_name:         ${{ steps.bicep.outputs.acr_name }}
+      backend_app_name: ${{ steps.bicep.outputs.backend_app_name }}
+      frontend_app_name:${{ steps.bicep.outputs.frontend_app_name }}
+      backend_hostname: ${{ steps.bicep.outputs.backend_hostname }}
+      frontend_hostname:${{ steps.bicep.outputs.frontend_hostname }}
+      kv_name:          ${{ steps.bicep.outputs.kv_name }}
 
-  validate-database:
-    needs: build-and-push
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Ensure resource group exists
+        run: |
+          az group create \
+            --name "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+            --location southeastasia \
+            --output none
+
+      - name: Get service principal object ID
+        id: sp
+        run: |
+          OID=$(az ad sp show --id $(echo '${{ secrets.AZURE_CREDENTIALS }}' | jq -r '.clientId') --query id -o tsv)
+          echo "oid=$OID" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy Bicep infrastructure
+        id: bicep
+        run: |
+          OUT=$(az deployment group create \
+            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+            --template-file infra/main.bicep \
+            --parameters \
+                environment=${{ env.ENVIRONMENT }} \
+                uniqueSuffix=${{ env.UNIQUE_SUFFIX }} \
+                postgresAdminPassword="${{ secrets.POSTGRES_ADMIN_PASSWORD }}" \
+                jwtSecretKey="${{ secrets.JWT_SECRET_KEY }}" \
+                deployPrincipalObjectId="${{ steps.sp.outputs.oid }}" \
+            --query "properties.outputs" \
+            --output json)
+
+          echo "acr_login_server=$(echo $OUT | jq -r '.acrLoginServer.value')"   >> "$GITHUB_OUTPUT"
+          echo "acr_name=$(echo $OUT | jq -r '.acrName.value')"                  >> "$GITHUB_OUTPUT"
+          echo "backend_app_name=$(echo $OUT | jq -r '.backendAppName.value')"   >> "$GITHUB_OUTPUT"
+          echo "frontend_app_name=$(echo $OUT | jq -r '.frontendAppName.value')" >> "$GITHUB_OUTPUT"
+          echo "backend_hostname=$(echo $OUT | jq -r '.backendHostname.value')"  >> "$GITHUB_OUTPUT"
+          echo "frontend_hostname=$(echo $OUT | jq -r '.frontendHostname.value')">> "$GITHUB_OUTPUT"
+          echo "kv_name=$(echo $OUT | jq -r '.keyVaultName.value')"              >> "$GITHUB_OUTPUT"
+
+  # ── 2. Build images, scan for vulnerabilities, push to ACR ───────────────
+  build:
+    needs: provision
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    env:
+      REGISTRY: ${{ needs.provision.outputs.acr_login_server }}
 
     steps:
-    - name: Check database connectivity and pending migrations
-      env:
-        DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      run: |
-        test -n "$DATABASE_URL" || { echo "DATABASE_URL secret is required"; exit 1; }
-        docker run --rm --env DATABASE_URL="$DATABASE_URL" \
-          mcr.microsoft.com/dotnet/sdk:9.0 bash -c '
-            apt-get update -qq && apt-get install -y -qq postgresql-client >/dev/null
-            python3 - <<'"'"'PY'"'"'
-            import os
-            from urllib.parse import urlparse
-            parsed = urlparse(os.environ["DATABASE_URL"])
-            assert parsed.hostname and parsed.path, "DATABASE_URL must include host and database"
-            print(f"Database target: {parsed.hostname}{parsed.path}")
-            PY
-            pg_isready -d "$DATABASE_URL"
-          '
+      - uses: actions/checkout@v4
 
+      - uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Login to ACR
+        run: az acr login --name "${{ needs.provision.outputs.acr_name }}"
+
+      - name: Build backend image
+        run: |
+          docker build -f Dockerfile \
+            -t $REGISTRY/econnectone-backend:${{ github.sha }} \
+            -t $REGISTRY/econnectone-backend:latest .
+
+      - name: Scan backend image for vulnerabilities
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ needs.provision.outputs.acr_login_server }}/econnectone-backend:${{ github.sha }}
+          format: table
+          exit-code: 1
+          severity: CRITICAL
+          ignore-unfixed: true
+
+      - name: Build frontend image
+        run: |
+          docker build -f frontend/Dockerfile \
+            --build-arg VITE_API_BASE_URL="https://${{ needs.provision.outputs.backend_hostname }}/api" \
+            -t $REGISTRY/econnectone-frontend:${{ github.sha }} \
+            -t $REGISTRY/econnectone-frontend:latest ./frontend
+
+      - name: Scan frontend image for vulnerabilities
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ needs.provision.outputs.acr_login_server }}/econnectone-frontend:${{ github.sha }}
+          format: table
+          exit-code: 1
+          severity: CRITICAL
+          ignore-unfixed: true
+
+      - name: Push images to ACR
+        run: |
+          docker push $REGISTRY/econnectone-backend:${{ github.sha }}
+          docker push $REGISTRY/econnectone-backend:latest
+          docker push $REGISTRY/econnectone-frontend:${{ github.sha }}
+          docker push $REGISTRY/econnectone-frontend:latest
+
+  # ── 3. Run EF Core migrations ─────────────────────────────────────────────
+  #    Fresh DB  → creates all tables + seeds admin user (Program.cs)
+  #    Existing  → applies only pending migrations, data untouched
+  migrate:
+    needs: [provision, build]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Install EF Core CLI
+        run: dotnet tool install dotnet-ef --tool-path "$RUNNER_TEMP/dotnet-tools" --version 9.0.8
+
+      - name: Restore & build backend
+        run: |
+          dotnet restore backend/eConnectOne.API/eConnectOne.API.csproj
+          dotnet build backend/eConnectOne.API/eConnectOne.API.csproj -c Release --no-restore
+
+      - name: Apply migrations
+        # Connection string is built here from secrets — never passed as a job output
+        env:
+          PG_HOST: pg-econn-${{ env.ENVIRONMENT }}-${{ env.UNIQUE_SUFFIX }}.postgres.database.azure.com
+          PG_PASS: ${{ secrets.POSTGRES_ADMIN_PASSWORD }}
+        run: |
+          DB_CONN="Host=${PG_HOST};Port=5432;Database=eConnectOne;Username=pgadmin;Password=${PG_PASS};SSL Mode=Require"
+          "$RUNNER_TEMP/dotnet-tools/dotnet-ef" database update \
+            --project backend/eConnectOne.API/eConnectOne.API.csproj \
+            --startup-project backend/eConnectOne.API/eConnectOne.API.csproj \
+            --context ApplicationDbContext \
+            --connection "$DB_CONN"
+
+  # ── 4. Deploy to Container Apps ───────────────────────────────────────────
   deploy:
-    needs: build-and-push
+    needs: [provision, build, migrate]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    
+    env:
+      REGISTRY: ${{ needs.provision.outputs.acr_login_server }}
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Login to Azure
-      uses: azure/login@v1
-      with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
+      - uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    - name: Configure backend container and settings
-      env:
-        DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
-      run: |
-        az webapp config container set \
-          --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
-          --name "${{ secrets.BACKEND_APP_NAME }}" \
-          --docker-custom-image-name "${{ needs.build-and-push.outputs.backend-image }}" \
-          --docker-registry-server-url "https://${{ env.REGISTRY }}" \
-          --docker-registry-server-user "${{ secrets.ACR_USERNAME }}" \
-          --docker-registry-server-password "${{ secrets.ACR_PASSWORD }}"
-        az webapp config appsettings set \
-          --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
-          --name "${{ secrets.BACKEND_APP_NAME }}" \
-          --settings DATABASE_URL="$DATABASE_URL" ASPNETCORE_URLS="http://+:80" DOTNET_ENVIRONMENT=Production JWT-SECRET-KEY="$JWT_SECRET_KEY"
+      - name: Deploy backend
+        # Connection string built from secrets here too — never in logs as a variable
+        env:
+          PG_HOST: pg-econn-${{ env.ENVIRONMENT }}-${{ env.UNIQUE_SUFFIX }}.postgres.database.azure.com
+          PG_PASS: ${{ secrets.POSTGRES_ADMIN_PASSWORD }}
+          JWT_KEY: ${{ secrets.JWT_SECRET_KEY }}
+          FRONTEND_ORIGIN: https://${{ needs.provision.outputs.frontend_hostname }}
+          BACKEND_HOSTNAME: ${{ needs.provision.outputs.backend_hostname }}
+        run: |
+          DB_CONN="Host=${PG_HOST};Port=5432;Database=eConnectOne;Username=pgadmin;Password=${PG_PASS};SSL Mode=Require"
+          az containerapp update \
+            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+            --name "${{ needs.provision.outputs.backend_app_name }}" \
+            --image "$REGISTRY/econnectone-backend:${{ github.sha }}" \
+            --set-env-vars \
+              "DATABASE_URL=${DB_CONN}" \
+              "JWT-SECRET-KEY=${JWT_KEY}" \
+              DOTNET_ENVIRONMENT=Production \
+              ASPNETCORE_URLS="http://+:80" \
+              "FRONTEND_ORIGIN=${FRONTEND_ORIGIN}" \
+              "ALLOWED_HOSTS=${BACKEND_HOSTNAME}"
 
-    - name: Configure frontend container
-      run: |
-        az webapp config container set \
-          --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
-          --name "${{ secrets.FRONTEND_APP_NAME }}" \
-          --docker-custom-image-name "${{ needs.build-and-push.outputs.frontend-image }}" \
-          --docker-registry-server-url "https://${{ env.REGISTRY }}" \
-          --docker-registry-server-user "${{ secrets.ACR_USERNAME }}" \
-          --docker-registry-server-password "${{ secrets.ACR_PASSWORD }}"
-    
-    - name: Restart applications after configuration
-      run: |
-        az webapp restart --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" --name "${{ secrets.BACKEND_APP_NAME }}"
-        az webapp restart --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" --name "${{ secrets.FRONTEND_APP_NAME }}"
-    
-    - name: Verify Backend Deployment
-      run: |
-        echo "Waiting for backend to be ready..."
-        for i in {1..30}; do
-          if curl --fail --silent --show-error "https://${{ secrets.BACKEND_APP_NAME }}.azurewebsites.net/swagger/index.html" >/dev/null; then
-            echo "✅ Backend is responding"
-            exit 0
-          fi
-          echo "Waiting for backend... (attempt $i/30)"
-          sleep 10
-        done
-        echo "Backend did not become healthy"; exit 1
-    
-    - name: Verify Frontend Deployment
-      run: |
-        echo "Waiting for frontend to be ready..."
-        for i in {1..30}; do
-          if curl --fail --silent --show-error "https://${{ secrets.FRONTEND_APP_NAME }}.azurewebsites.net/health" >/dev/null; then
-            echo "✅ Frontend is responding"
-            exit 0
-          fi
-          echo "Waiting for frontend... (attempt $i/30)"
-          sleep 10
-        done
-        echo "Frontend did not become healthy"; exit 1
-    
-    - name: Display deployment URLs
-      run: |
-        BACKEND_URL=$(az webapp show --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} --name ${{ secrets.BACKEND_APP_NAME }} --query defaultHostName -o tsv)
-        FRONTEND_URL=$(az webapp show --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} --name ${{ secrets.FRONTEND_APP_NAME }} --query defaultHostName -o tsv)
-        echo "🚀 Deployment Complete!"
-        echo "Backend API: https://$BACKEND_URL"
-        echo "Frontend: https://$FRONTEND_URL"
-    
-    - name: Logout from Azure
-      run: az logout
+      - name: Deploy frontend
+        run: |
+          az containerapp update \
+            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+            --name "${{ needs.provision.outputs.frontend_app_name }}" \
+            --image "$REGISTRY/econnectone-frontend:${{ github.sha }}"
+
+      - name: Health check — backend /health
+        run: |
+          for i in $(seq 1 20); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+              "https://${{ needs.provision.outputs.backend_hostname }}/health")
+            if [ "$STATUS" = "200" ]; then
+              echo "✅ Backend healthy"; exit 0
+            fi
+            echo "Waiting... attempt $i/20 (status: $STATUS)"; sleep 15
+          done
+          echo "❌ Backend health check failed"; exit 1
+
+      - name: Health check — frontend /health
+        run: |
+          for i in $(seq 1 10); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+              "https://${{ needs.provision.outputs.frontend_hostname }}/health")
+            if [ "$STATUS" = "200" ]; then
+              echo "✅ Frontend healthy"; exit 0
+            fi
+            echo "Waiting... attempt $i/10 (status: $STATUS)"; sleep 10
+          done
+          echo "❌ Frontend health check failed"; exit 1
+
+      - name: Deployment summary
+        run: |
+          echo "### 🚀 Deployment Complete" >> $GITHUB_STEP_SUMMARY
+          echo "| Service  | URL |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-----|" >> $GITHUB_STEP_SUMMARY
+          echo "| Frontend | https://${{ needs.provision.outputs.frontend_hostname }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Backend  | https://${{ needs.provision.outputs.backend_hostname }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Swagger  | https://${{ needs.provision.outputs.backend_hostname }}/swagger |" >> $GITHUB_STEP_SUMMARY
+          echo "| Key Vault| ${{ needs.provision.outputs.kv_name }} |" >> $GITHUB_STEP_SUMMARY

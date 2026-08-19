@@ -34,4 +34,7 @@ Thumbs.db
 
 # Environment
 .env
+.env.local
+.env.*.local
 appsettings.Development.json
+appsettings.*.local.json

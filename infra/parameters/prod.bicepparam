@@ -2,9 +2,8 @@ using './main.bicep'
 
 param environment = 'prod'
 param location = 'southeastasia'
-param repoOwner = 'diweshtanwar'
-param repoName = 'eConnectOneV1'
-param branch = 'main'
 
-param neonConnectionString = 'postgresql://neondb_owner:YOUR_PASSWORD@YOUR_HOSTNAME.neon.tech/eConnectOne?sslmode=require'
-param jwtSecretKey = replace('-', '', (New-Guid).Guid) + replace('-', '', (New-Guid).Guid)
+// Set these as GitHub secrets: POSTGRES_ADMIN_PASSWORD and JWT_SECRET_KEY
+// They are passed in by the GitHub Actions workflow — do NOT hardcode here
+param postgresAdminPassword = ''
+param jwtSecretKey = ''

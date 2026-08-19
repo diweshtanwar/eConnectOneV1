@@ -19,8 +19,8 @@ param adminPassword string
 ])
 param postgresVersion string = '16'
 
-@description('SKU name (e.g., B_Gen5_1, GP_Gen5_2, MO_Gen5_2)')
-param skuName string = 'B_Gen5_1'
+@description('SKU name for Flexible Server (e.g., Standard_B1ms, Standard_D2s_v3)')
+param skuName string = 'Standard_B1ms'
 
 @description('Storage in MB (min 32768, max 16777216)')
 @minValue(32768)
@@ -53,15 +53,10 @@ resource postgresServer 'Microsoft.DBforPostgreSQL/flexibleServers@2023-06-01-pr
     }
     storage: {
       storageSizeGB: storageSize / 1024
-      autoGrow: 'Enabled'
     }
     backup: {
       backupRetentionDays: backupRetentionDays
       geoRedundantBackup: geoRedundantBackup
-    }
-    network: {
-      delegatedSubnetResourceId: subnetId
-      privateDnsZoneArmResourceId: string(subnetId != '' ? '${resourceGroup().id}/providers/Microsoft.Network/privateDnsZones/privatelink.postgres.database.azure.com' : '')
     }
     highAvailability: {
       mode: 'Disabled'
