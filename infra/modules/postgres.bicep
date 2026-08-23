@@ -44,14 +44,14 @@ param databaseName string = 'eConnectOne'
 resource postgresServer 'Microsoft.DBforPostgreSQL/flexibleServers@2023-06-01-preview' = {
   name: postgresServerName
   location: location
+  sku: {
+    name: skuName
+    tier: 'Burstable'
+  }
   properties: {
     administratorLogin: adminUser
     administratorLoginPassword: adminPassword
     version: postgresVersion
-    sku: {
-      name: skuName
-      tier: 'Burstable'
-    }
     storage: {
       storageSizeGB: storageSize / 1024
     }
