@@ -4,6 +4,9 @@ param containerAppName string
 @description('Resource group location')
 param location string = resourceGroup().location
 
+@description('Shared Container App Environment resource ID')
+param containerAppEnvId string
+
 @description('Docker container image name')
 param containerImage string
 
@@ -13,7 +16,7 @@ param containerRegistryServer string
 @description('CPU cores')
 param cpuCores string = '0.5'
 
-@description('Memory in GB (e.g. "1.0Gi")')
+@description('Memory in GB')
 param memoryGb string = '1.0'
 
 @description('Minimum replica count (0 = scale-to-zero)')
@@ -35,23 +38,15 @@ param environmentVariables object = {}
 @secure()
 param secrets object = {}
 
-// Convert secrets object to array for Container App secrets config
 var secretsArray = [for item in objectKeys(secrets): {
   name: toLower(replace(item, '_', '-'))
   value: secrets[item]
 }]
 
-// Convert env vars object to array
 var envArray = [for key in objectKeys(environmentVariables): {
   name: key
   value: environmentVariables[key]
 }]
-
-resource containerAppEnv 'Microsoft.App/managedEnvironments@2023-05-01' = {
-  name: 'env-${containerAppName}'
-  location: location
-  properties: {}
-}
 
 resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
   name: containerAppName
@@ -60,7 +55,7 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
     type: 'SystemAssigned'
   }
   properties: {
-    managedEnvironmentId: containerAppEnv.id
+    managedEnvironmentId: containerAppEnvId
     configuration: {
       secrets: secretsArray
       registries: [

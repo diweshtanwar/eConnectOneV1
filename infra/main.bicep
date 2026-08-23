@@ -53,7 +53,7 @@ module kvModule 'modules/keyvault.bicep' = {
     keyVaultName: 'kv-econn-${environment}-${uniqueSuffix}'
     location: location
     principalObjectId: deployPrincipalObjectId
-    enablePurgeProtection: false
+    enablePurgeProtection: true
   }
 }
 
@@ -74,12 +74,20 @@ resource kvSecretJwt 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
   dependsOn: [kvModule]
 }
 
+// --- Shared Container App Environment (only 1 allowed per region) ---
+resource containerAppEnv 'Microsoft.App/managedEnvironments@2023-05-01' = {
+  name: 'env-econnectone-${environment}'
+  location: location
+  properties: {}
+}
+
 // --- Backend Container App ---
 module backendAppModule 'modules/container-app.bicep' = {
   name: 'backend-${environment}'
   params: {
     containerAppName: 'app-econnectone-api-${environment}'
     location: location
+    containerAppEnvId: containerAppEnv.id
     containerImage: '${acrModule.outputs.acrLoginServer}/econnectone-backend:latest'
     containerRegistryServer: acrModule.outputs.acrLoginServer
     cpuCores: '0.5'
@@ -117,6 +125,7 @@ module frontendAppModule 'modules/container-app.bicep' = {
   params: {
     containerAppName: 'app-econnectone-web-${environment}'
     location: location
+    containerAppEnvId: containerAppEnv.id
     containerImage: '${acrModule.outputs.acrLoginServer}/econnectone-frontend:latest'
     containerRegistryServer: acrModule.outputs.acrLoginServer
     cpuCores: '0.25'
