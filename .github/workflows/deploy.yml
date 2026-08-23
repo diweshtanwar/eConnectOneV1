@@ -1,24 +1,7 @@
 name: Deploy to Azure App Service
 
 on:
-  push:
-    branches: [ main ]
-    paths:
-      - 'backend/**'
-      - 'frontend/**'
-      - 'Dockerfile'
-      - 'frontend/Dockerfile'
-  workflow_dispatch:
-    inputs:
-      environment:
-        description: 'Target environment'
-        required: true
-        default: 'prod'
-        type: choice
-        options:
-          - prod
-          - staging
-          - dev
+  workflow_dispatch: # disabled — azure-deploy.yml handles everything
 
 permissions:
   id-token: write

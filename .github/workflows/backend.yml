@@ -1,19 +1,7 @@
 name: Build and Push Backend Image
 
 on:
-  push:
-    branches: [ main, develop ]
-    paths:
-      - 'backend/**'
-      - 'Dockerfile'
-      - '*.csproj'
-  pull_request:
-    branches: [ main, develop ]
-    paths:
-      - 'backend/**'
-      - 'Dockerfile'
-      - '*.csproj'
-  workflow_dispatch:
+  workflow_dispatch: # disabled — azure-deploy.yml handles everything
 
 permissions:
   id-token: write
