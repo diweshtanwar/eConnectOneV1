@@ -32,6 +32,7 @@ param ingressTargetPort int = 80
 param environmentVariables object = {}
 
 @description('Secrets as key-value object')
+@secure()
 param secrets object = {}
 
 // Convert secrets object to array for Container App secrets config

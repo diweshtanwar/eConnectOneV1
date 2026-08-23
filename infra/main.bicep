@@ -53,7 +53,7 @@ module kvModule 'modules/keyvault.bicep' = {
     keyVaultName: 'kv-econn-${environment}-${uniqueSuffix}'
     location: location
     principalObjectId: deployPrincipalObjectId
-    enablePurgeProtection: false  // set true for prod after first deploy
+    enablePurgeProtection: false
   }
 }
 
@@ -97,12 +97,12 @@ module backendAppModule 'modules/container-app.bicep' = {
       'JWT-SECRET-KEY': jwtSecretKey
     }
   }
-  dependsOn: [acrModule, postgresModule, kvSecretDb, kvSecretJwt]
 }
 
 // Grant backend managed identity access to Key Vault secrets
+var kvRoleBackendName = guid('kv-econn-${environment}-${uniqueSuffix}', 'app-econnectone-api-${environment}', 'kvSecretsUser')
 resource kvRoleBackend 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid('kv-econn-${environment}-${uniqueSuffix}', backendAppModule.outputs.managedIdentityPrincipalId, 'kvSecretsUser')
+  name: kvRoleBackendName
   scope: resourceGroup()
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')
@@ -128,7 +128,6 @@ module frontendAppModule 'modules/container-app.bicep' = {
     environmentVariables: {}
     secrets: {}
   }
-  dependsOn: [acrModule]
 }
 
 // Outputs consumed by GitHub Actions

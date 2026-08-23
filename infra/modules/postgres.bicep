@@ -35,6 +35,7 @@ param backupRetentionDays int = 7
 param geoRedundantBackup bool = false
 
 @description('VNet integration subnet resource ID (optional)')
+#disable-next-line no-unused-params
 param subnetId string = ''
 
 @description('PostgreSQL database name')
@@ -56,7 +57,7 @@ resource postgresServer 'Microsoft.DBforPostgreSQL/flexibleServers@2023-06-01-pr
     }
     backup: {
       backupRetentionDays: backupRetentionDays
-      geoRedundantBackup: geoRedundantBackup
+      geoRedundantBackup: geoRedundantBackup ? 'Enabled' : 'Disabled'
     }
     highAvailability: {
       mode: 'Disabled'
