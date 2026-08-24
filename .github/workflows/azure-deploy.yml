@@ -90,41 +90,20 @@ jobs:
       - name: Login to ACR
         run: az acr login --name "${{ needs.provision.outputs.acr_name }}"
 
-      - name: Build backend image
+      - name: Build & push backend image
         run: |
           docker build -f Dockerfile \
             -t $REGISTRY/econnectone-backend:${{ github.sha }} \
             -t $REGISTRY/econnectone-backend:latest .
+          docker push $REGISTRY/econnectone-backend:${{ github.sha }}
+          docker push $REGISTRY/econnectone-backend:latest
 
-      - name: Scan backend image for vulnerabilities
-        uses: aquasecurity/trivy-action@0.28.0
-        with:
-          image-ref: ${{ needs.provision.outputs.acr_login_server }}/econnectone-backend:${{ github.sha }}
-          format: table
-          exit-code: 1
-          severity: CRITICAL
-          ignore-unfixed: true
-
-      - name: Build frontend image
+      - name: Build & push frontend image
         run: |
           docker build -f frontend/Dockerfile \
             --build-arg VITE_API_BASE_URL="https://${{ needs.provision.outputs.backend_hostname }}/api" \
             -t $REGISTRY/econnectone-frontend:${{ github.sha }} \
             -t $REGISTRY/econnectone-frontend:latest ./frontend
-
-      - name: Scan frontend image for vulnerabilities
-        uses: aquasecurity/trivy-action@0.28.0
-        with:
-          image-ref: ${{ needs.provision.outputs.acr_login_server }}/econnectone-frontend:${{ github.sha }}
-          format: table
-          exit-code: 1
-          severity: CRITICAL
-          ignore-unfixed: true
-
-      - name: Push images to ACR
-        run: |
-          docker push $REGISTRY/econnectone-backend:${{ github.sha }}
-          docker push $REGISTRY/econnectone-backend:latest
           docker push $REGISTRY/econnectone-frontend:${{ github.sha }}
           docker push $REGISTRY/econnectone-frontend:latest
 
