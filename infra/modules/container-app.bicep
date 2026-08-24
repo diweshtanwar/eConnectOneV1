@@ -10,8 +10,8 @@ param containerAppEnvId string
 @description('Docker container image name')
 param containerImage string
 
-@description('Container registry server URL')
-param containerRegistryServer string
+@description('Container registry server URL (optional, leave empty for placeholder image)')
+param containerRegistryServer string = ''
 
 @description('CPU cores')
 param cpuCores string = '0.5'
@@ -58,12 +58,12 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
     managedEnvironmentId: containerAppEnvId
     configuration: {
       secrets: secretsArray
-      registries: [
+      registries: containerRegistryServer != '' ? [
         {
           server: containerRegistryServer
           identity: 'system'
         }
-      ]
+      ] : []
       activeRevisionsMode: 'Single'
       ingress: ingressEnabled ? {
         external: true

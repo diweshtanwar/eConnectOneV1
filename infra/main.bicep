@@ -74,7 +74,8 @@ resource kvSecretJwt 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
   dependsOn: [kvModule]
 }
 
-// --- Shared Container App Environment (only 1 allowed per region) ---
+// --- Shared Container App Environment ---
+// Reuse existing environment if present, otherwise create one
 resource containerAppEnv 'Microsoft.App/managedEnvironments@2023-05-01' = {
   name: 'env-econnectone-${environment}'
   location: location
@@ -88,9 +89,8 @@ module backendAppModule 'modules/container-app.bicep' = {
     containerAppName: 'app-econnectone-api-${environment}'
     location: location
     containerAppEnvId: containerAppEnv.id
-    containerImage: '${acrModule.outputs.acrLoginServer}/econnectone-backend:latest'
-    containerRegistryServer: acrModule.outputs.acrLoginServer
-    cpuCores: '0.5'
+    containerImage: 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
+    containerRegistryServer: ''
     memoryGb: '1.0'
     minReplicas: 0
     maxReplicas: 1
@@ -126,9 +126,8 @@ module frontendAppModule 'modules/container-app.bicep' = {
     containerAppName: 'app-econnectone-web-${environment}'
     location: location
     containerAppEnvId: containerAppEnv.id
-    containerImage: '${acrModule.outputs.acrLoginServer}/econnectone-frontend:latest'
-    containerRegistryServer: acrModule.outputs.acrLoginServer
-    cpuCores: '0.25'
+    containerImage: 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
+    containerRegistryServer: ''
     memoryGb: '0.5'
     minReplicas: 0
     maxReplicas: 1
