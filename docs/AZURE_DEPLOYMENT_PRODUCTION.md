@@ -8,7 +8,7 @@ This document describes the production-grade, fully automated CI/CD and Infrastr
 - **Minimal User Input**: Run one PowerShell script, copy three GitHub secrets, push code.
 - **Maximum Reliability**: IaC state tracking, idempotent deployments, automated smoke tests, encrypted backups.
 - **Security First**: No long-lived secrets, OIDC authentication, Managed Identities, Key Vault with purge protection, AES-256 backup encryption.
-- **Containerized**: Docker multi-stage builds for both backend (.NET 9) and frontend (Node 20 + Nginx).
+- **Containerized**: Docker multi-stage builds for both backend (.NET 10) and frontend (Node 20 + Nginx).
 
 ---
 
@@ -64,7 +64,7 @@ This document describes the production-grade, fully automated CI/CD and Infrastr
 | Bicep CLI | `>= 0.26.0` | IaC compilation | `az bicep install` |
 | PowerShell | `>= 7.2` (Core) | Master orchestration scripts | Built-in on Windows 11 / `winget install Microsoft.PowerShell` |
 | Docker Desktop | `>= 24.0` | Local container builds | `winget install Docker.DockerDesktop` |
-| .NET SDK | `9.0.x` | Backend build & migrations | `winget install Microsoft.DotNet.SDK.9` |
+| .NET SDK | `10.0.x` | Backend build & migrations | `winget install Microsoft.DotNet.SDK.10` |
 | Node.js | `20.x` | Frontend build | `winget install OpenJS.NodeJS` |
 | Git | `>= 2.40` | Source control | Built-in or `winget install Git.Git` |
 | Azure PowerShell | `>= 11.0` | Advanced Azure automation | `Install-Module -Name Az -Scope CurrentUser -Repository PSGallery -Force` |
