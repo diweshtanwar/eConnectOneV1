@@ -60,9 +60,9 @@ namespace eConnectOne.API.Controllers
                 passwordValid = !string.IsNullOrEmpty(user.PasswordHash) &&
                     BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash);
             }
-            catch (Exception)
+            catch (BCrypt.Net.SaltParseException)
             {
-                // PasswordHash is missing or not a valid BCrypt hash (e.g. corrupted/seeded incorrectly).
+                // PasswordHash is not a valid BCrypt hash (e.g. corrupted/seeded incorrectly).
                 // Treat as invalid credentials instead of leaking a 500 to the client.
                 passwordValid = false;
             }
