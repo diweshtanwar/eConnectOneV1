@@ -31,9 +31,10 @@ namespace eConnectOne.API.Services
             var key = Encoding.ASCII.GetBytes(jwtKey);
 
             var jwtDurationSetting = _configuration["Jwt:DurationInMinutes"];
-            var tokenDurationInMinutes = double.TryParse(jwtDurationSetting, out var parsedDuration)
-                ? parsedDuration
-                : 60;
+            if (!double.TryParse(jwtDurationSetting, out var tokenDurationInMinutes))
+            {
+                throw new InvalidOperationException("JWT duration is not configured correctly.");
+            }
             
             var tokenDescriptor = new SecurityTokenDescriptor
             {
