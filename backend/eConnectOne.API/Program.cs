@@ -55,6 +55,13 @@ var envJwtKey = Environment.GetEnvironmentVariable("JWT-SECRET-KEY");
 if (jwtOptions != null && !string.IsNullOrEmpty(envJwtKey) && !envJwtKey.Contains("PLACEHOLDER"))
 {
     jwtOptions.Key = envJwtKey;
+
+    // Also write the override back into IConfiguration so any component that reads
+    // "Jwt:Key" directly (e.g. TokenService) sees the real key instead of the
+    // appsettings.json placeholder. Without this, tokens are minted with the
+    // placeholder value while validation uses the real key, causing every
+    // authenticated request after login to fail with 401.
+    builder.Configuration["Jwt:Key"] = envJwtKey;
 }
 
 // Override AllowedHosts from env var for production (set to actual hostname)
