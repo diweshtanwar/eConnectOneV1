@@ -73,7 +73,6 @@ namespace eConnectOne.API.Controllers
             }
             catch (Exception)
             {
-                // Log the exception
                 return StatusCode(500, "An error occurred while creating the user.");
             }
         }
@@ -97,7 +96,6 @@ namespace eConnectOne.API.Controllers
             }
             catch (Exception)
             {
-                // Log the exception
                 return StatusCode(500, "An error occurred while updating the user.");
             }
         }
@@ -121,7 +119,6 @@ namespace eConnectOne.API.Controllers
             }
             catch (Exception)
             {
-                // Log the exception
                 return StatusCode(500, "An error occurred while updating general user details.");
             }
         }
@@ -145,7 +142,6 @@ namespace eConnectOne.API.Controllers
             }
             catch (Exception)
             {
-                // Log the exception
                 return StatusCode(500, "An error occurred while updating CSP details.");
             }
         }
@@ -165,7 +161,6 @@ namespace eConnectOne.API.Controllers
             }
             catch (Exception)
             {
-                // Log the exception
                 return StatusCode(500, "An error occurred while soft deleting the user.");
             }
         }
@@ -185,7 +180,6 @@ namespace eConnectOne.API.Controllers
             }
             catch (Exception)
             {
-                // Log the exception
                 return StatusCode(500, "An error occurred while restoring the user.");
             }
         }
@@ -206,7 +200,6 @@ namespace eConnectOne.API.Controllers
             }
             catch (Exception)
             {
-                // Log the exception
                 return StatusCode(500, "An error occurred while resetting the password.");
             }
         }
@@ -233,7 +226,6 @@ namespace eConnectOne.API.Controllers
             }
             catch (Exception)
             {
-                // Log the exception
                 return StatusCode(500, "An error occurred while resetting your password.");
             }
         }
