@@ -154,10 +154,14 @@ jobs:
       - name: Get ACR credentials
         id: acr_creds
         run: |
+          ACR_USER=$(az acr credential show \
+            --name "${{ needs.provision.outputs.acr_name }}" \
+            --query "username" -o tsv)
           ACR_PASS=$(az acr credential show \
             --name "${{ needs.provision.outputs.acr_name }}" \
             --query "passwords[0].value" -o tsv)
           echo "::add-mask::$ACR_PASS"
+          echo "acr_username=$ACR_USER" >> "$GITHUB_OUTPUT"
           echo "acr_password=$ACR_PASS" >> "$GITHUB_OUTPUT"
 
       - name: Deploy backend
@@ -167,6 +171,7 @@ jobs:
           JWT_KEY: ${{ secrets.JWT_SECRET_KEY }}
           FRONTEND_ORIGIN: https://${{ needs.provision.outputs.frontend_hostname }}
           BACKEND_HOSTNAME: ${{ needs.provision.outputs.backend_hostname }}
+          ACR_USERNAME: ${{ steps.acr_creds.outputs.acr_username }}
           ACR_PASSWORD: ${{ steps.acr_creds.outputs.acr_password }}
         run: |
           DB_CONN="Host=${PG_HOST};Port=5432;Database=eConnectOne;Username=pgadmin;******;SSL Mode=Require"
@@ -174,7 +179,7 @@ jobs:
             --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
             --name "${{ needs.provision.outputs.backend_app_name }}" \
             --server "$REGISTRY" \
-            --username "${{ needs.provision.outputs.acr_name }}" \
+            --username "$ACR_USERNAME" \
             --password "$ACR_PASSWORD"
           az containerapp update \
             --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
@@ -190,13 +195,14 @@ jobs:
 
       - name: Deploy frontend
         env:
+          ACR_USERNAME: ${{ steps.acr_creds.outputs.acr_username }}
           ACR_PASSWORD: ${{ steps.acr_creds.outputs.acr_password }}
         run: |
           az containerapp registry set \
             --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
             --name "${{ needs.provision.outputs.frontend_app_name }}" \
             --server "$REGISTRY" \
-            --username "${{ needs.provision.outputs.acr_name }}" \
+            --username "$ACR_USERNAME" \
             --password "$ACR_PASSWORD"
           az containerapp update \
             --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
