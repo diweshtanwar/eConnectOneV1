@@ -160,6 +160,7 @@ jobs:
           ACR_PASS=$(az acr credential show \
             --name "${{ needs.provision.outputs.acr_name }}" \
             --query "passwords[0].value" -o tsv)
+          echo "::add-mask::$ACR_USER"
           echo "::add-mask::$ACR_PASS"
           echo "acr_username=$ACR_USER" >> "$GITHUB_OUTPUT"
           echo "acr_password=$ACR_PASS" >> "$GITHUB_OUTPUT"
