@@ -1,6 +1,7 @@
 using eConnectOne.API.Data;
 using eConnectOne.API.Models.Configuration;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace eConnectOne.API.Extensions;
 
@@ -138,16 +139,22 @@ public static class DatabaseConfigurationExtensions
             // Cloud-managed providers generally require SSL.
             var sslMode = ShouldUseSsl(hostname, postgresqlUri) ? "Require" : "Disable";
 
-            // Build EF Core connection string
-            var connectionString = $"Server={hostname};" +
-                                   $"Port={port};" +
-                                   $"Database={database};" +
-                                   $"User Id={username};" +
-                                   $"Password={password};" +
-                                   $"SSL Mode={sslMode};" +
-                                   $"Trust Server Certificate=true;" +
-                                   $"CommandTimeout=30;" +
-                                   $"Pooling={useNpgsqlPooling};";
+            // Build EF Core connection string using NpgsqlConnectionStringBuilder so that
+            // special characters in the username/password/database (e.g. ';', '=', '"')
+            // are correctly escaped instead of corrupting the connection string, which
+            // could otherwise cause NpgsqlConnection.SetupDataSource() to throw at startup.
+            var connectionStringBuilder = new NpgsqlConnectionStringBuilder
+            {
+                Host = hostname,
+                Port = port,
+                Database = database,
+                Username = username,
+                Password = password,
+                SslMode = string.Equals(sslMode, "Require", StringComparison.OrdinalIgnoreCase) ? SslMode.Require : SslMode.Disable,
+                CommandTimeout = 30,
+                Pooling = useNpgsqlPooling
+            };
+            var connectionString = connectionStringBuilder.ConnectionString;
 
             Console.WriteLine($"✅ DATABASE_URL parsed successfully");
             Console.WriteLine($"   Connection Type: {connectionType}");
