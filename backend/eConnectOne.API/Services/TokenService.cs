@@ -42,7 +42,14 @@ namespace eConnectOne.API.Services
                 {
                     new Claim(ClaimTypes.Name, user.Username),
                     new Claim(ClaimTypes.Role, user.Role?.Name ?? string.Empty),
-                    new Claim(ClaimTypes.NameIdentifier, user.Id.ToString())
+                    new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                    // Several controllers/middleware (e.g. RolePermissionsController.GetUserPermissions,
+                    // ChatController, MessagesController, UsersController, ResourceCenterController,
+                    // ErrorLoggingMiddleware, RateLimitingMiddleware) look up the user id via a plain
+                    // "id" claim rather than ClaimTypes.NameIdentifier. Without this claim those lookups
+                    // always fail, causing spurious 401s (e.g. "Failed to fetch user permissions") for
+                    // otherwise valid, authenticated tokens.
+                    new Claim("id", user.Id.ToString())
                 }),
                 Expires = DateTime.UtcNow.AddMinutes(tokenDurationInMinutes),
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature),
