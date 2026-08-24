@@ -102,7 +102,6 @@ jobs:
         run: |
           docker build -f frontend/Dockerfile \
             --build-arg VITE_API_BASE_URL="https://${{ needs.provision.outputs.backend_hostname }}/api" \
-            --build-arg VITE_BASE_PATH="/" \
             -t $REGISTRY/econnectone-frontend:${{ github.sha }} \
             -t $REGISTRY/econnectone-frontend:latest ./frontend
           docker push $REGISTRY/econnectone-frontend:${{ github.sha }}
