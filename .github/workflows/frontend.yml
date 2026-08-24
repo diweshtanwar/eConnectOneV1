@@ -73,4 +73,4 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Image digest
-        run: echo "Image pushed: ${{ steps.acr.outputs.name }}.azurecr.io/econnectone-frontend:${{ github.sha }}"
+        run: 'echo "Image pushed: ${{ steps.acr.outputs.name }}.azurecr.io/econnectone-frontend:${{ github.sha }}"'
