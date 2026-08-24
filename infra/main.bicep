@@ -91,6 +91,7 @@ module backendAppModule 'modules/container-app.bicep' = {
     containerAppEnvId: containerAppEnv.id
     containerImage: 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
     containerRegistryServer: ''
+    cpuCores: '0.5'
     memoryGb: '1.0'
     minReplicas: 0
     maxReplicas: 1
@@ -128,6 +129,7 @@ module frontendAppModule 'modules/container-app.bicep' = {
     containerAppEnvId: containerAppEnv.id
     containerImage: 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
     containerRegistryServer: ''
+    cpuCores: '0.25'
     memoryGb: '0.5'
     minReplicas: 0
     maxReplicas: 1
