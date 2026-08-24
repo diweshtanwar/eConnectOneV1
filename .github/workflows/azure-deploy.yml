@@ -170,13 +170,16 @@ jobs:
           ACR_PASSWORD: ${{ steps.acr_creds.outputs.acr_password }}
         run: |
           DB_CONN="Host=${PG_HOST};Port=5432;Database=eConnectOne;Username=pgadmin;******;SSL Mode=Require"
+          az containerapp registry set \
+            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+            --name "${{ needs.provision.outputs.backend_app_name }}" \
+            --server "$REGISTRY" \
+            --username "${{ needs.provision.outputs.acr_name }}" \
+            --password "$ACR_PASSWORD"
           az containerapp update \
             --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
             --name "${{ needs.provision.outputs.backend_app_name }}" \
             --image "$REGISTRY/econnectone-backend:${{ github.sha }}" \
-            --registry-server "$REGISTRY" \
-            --registry-username "${{ needs.provision.outputs.acr_name }}" \
-            --registry-password "$ACR_PASSWORD" \
             --set-env-vars \
               "DATABASE_URL=${DB_CONN}" \
               "JWT-SECRET-KEY=${JWT_KEY}" \
@@ -189,13 +192,16 @@ jobs:
         env:
           ACR_PASSWORD: ${{ steps.acr_creds.outputs.acr_password }}
         run: |
+          az containerapp registry set \
+            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+            --name "${{ needs.provision.outputs.frontend_app_name }}" \
+            --server "$REGISTRY" \
+            --username "${{ needs.provision.outputs.acr_name }}" \
+            --password "$ACR_PASSWORD"
           az containerapp update \
             --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
             --name "${{ needs.provision.outputs.frontend_app_name }}" \
-            --image "$REGISTRY/econnectone-frontend:${{ github.sha }}" \
-            --registry-server "$REGISTRY" \
-            --registry-username "${{ needs.provision.outputs.acr_name }}" \
-            --registry-password "$ACR_PASSWORD"
+            --image "$REGISTRY/econnectone-frontend:${{ github.sha }}"
 
       - name: Health check - backend
         run: |
