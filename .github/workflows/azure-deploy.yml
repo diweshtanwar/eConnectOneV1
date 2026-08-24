@@ -151,6 +151,15 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+      - name: Get ACR credentials
+        id: acr_creds
+        run: |
+          ACR_PASS=$(az acr credential show \
+            --name "${{ needs.provision.outputs.acr_name }}" \
+            --query "passwords[0].value" -o tsv)
+          echo "::add-mask::$ACR_PASS"
+          echo "acr_password=$ACR_PASS" >> "$GITHUB_OUTPUT"
+
       - name: Deploy backend
         env:
           PG_HOST: pg-econn-${{ env.ENVIRONMENT }}-${{ env.UNIQUE_SUFFIX }}.postgres.database.azure.com
@@ -158,12 +167,16 @@ jobs:
           JWT_KEY: ${{ secrets.JWT_SECRET_KEY }}
           FRONTEND_ORIGIN: https://${{ needs.provision.outputs.frontend_hostname }}
           BACKEND_HOSTNAME: ${{ needs.provision.outputs.backend_hostname }}
+          ACR_PASSWORD: ${{ steps.acr_creds.outputs.acr_password }}
         run: |
-          DB_CONN="Host=${PG_HOST};Port=5432;Database=eConnectOne;Username=pgadmin;Password=${PG_PASS};SSL Mode=Require"
+          DB_CONN="Host=${PG_HOST};Port=5432;Database=eConnectOne;Username=pgadmin;******;SSL Mode=Require"
           az containerapp update \
             --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
             --name "${{ needs.provision.outputs.backend_app_name }}" \
             --image "$REGISTRY/econnectone-backend:${{ github.sha }}" \
+            --registry-server "$REGISTRY" \
+            --registry-username "${{ needs.provision.outputs.acr_name }}" \
+            --registry-password "$ACR_PASSWORD" \
             --set-env-vars \
               "DATABASE_URL=${DB_CONN}" \
               "JWT-SECRET-KEY=${JWT_KEY}" \
@@ -173,11 +186,16 @@ jobs:
               "ALLOWED_HOSTS=${BACKEND_HOSTNAME}"
 
       - name: Deploy frontend
+        env:
+          ACR_PASSWORD: ${{ steps.acr_creds.outputs.acr_password }}
         run: |
           az containerapp update \
             --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
             --name "${{ needs.provision.outputs.frontend_app_name }}" \
-            --image "$REGISTRY/econnectone-frontend:${{ github.sha }}"
+            --image "$REGISTRY/econnectone-frontend:${{ github.sha }}" \
+            --registry-server "$REGISTRY" \
+            --registry-username "${{ needs.provision.outputs.acr_name }}" \
+            --registry-password "$ACR_PASSWORD"
 
       - name: Health check - backend
         run: |
