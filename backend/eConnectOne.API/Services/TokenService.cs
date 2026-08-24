@@ -23,7 +23,17 @@ namespace eConnectOne.API.Services
         public string GenerateToken(User user)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.ASCII.GetBytes(_configuration["Jwt:Key"]);
+            var jwtKey = _configuration["Jwt:Key"];
+            if (string.IsNullOrWhiteSpace(jwtKey))
+            {
+                throw new InvalidOperationException("JWT signing key is not configured.");
+            }
+            var key = Encoding.ASCII.GetBytes(jwtKey);
+
+            var jwtDurationSetting = _configuration["Jwt:DurationInMinutes"];
+            var tokenDurationInMinutes = double.TryParse(jwtDurationSetting, out var parsedDuration)
+                ? parsedDuration
+                : 60;
             
             var tokenDescriptor = new SecurityTokenDescriptor
             {
@@ -33,7 +43,7 @@ namespace eConnectOne.API.Services
                     new Claim(ClaimTypes.Role, user.Role?.Name ?? string.Empty),
                     new Claim(ClaimTypes.NameIdentifier, user.Id.ToString())
                 }),
-                Expires = DateTime.UtcNow.AddMinutes(Convert.ToDouble(_configuration["Jwt:DurationInMinutes"])),
+                Expires = DateTime.UtcNow.AddMinutes(tokenDurationInMinutes),
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature),
                 Issuer = _configuration["Jwt:Issuer"],
                 Audience = _configuration["Jwt:Audience"]

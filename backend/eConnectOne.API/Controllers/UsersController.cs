@@ -71,7 +71,7 @@ namespace eConnectOne.API.Controllers
             {
                 return BadRequest(ex.Message);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 // Log the exception
                 return StatusCode(500, "An error occurred while creating the user.");
@@ -95,7 +95,7 @@ namespace eConnectOne.API.Controllers
             {
                 return BadRequest(ex.Message);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 // Log the exception
                 return StatusCode(500, "An error occurred while updating the user.");
@@ -119,7 +119,7 @@ namespace eConnectOne.API.Controllers
             {
                 return BadRequest(ex.Message);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 // Log the exception
                 return StatusCode(500, "An error occurred while updating general user details.");
@@ -143,7 +143,7 @@ namespace eConnectOne.API.Controllers
             {
                 return BadRequest(ex.Message);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 // Log the exception
                 return StatusCode(500, "An error occurred while updating CSP details.");
@@ -163,7 +163,7 @@ namespace eConnectOne.API.Controllers
                 }
                 return NoContent(); // 204 No Content
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 // Log the exception
                 return StatusCode(500, "An error occurred while soft deleting the user.");
@@ -183,7 +183,7 @@ namespace eConnectOne.API.Controllers
                 }
                 return Ok(); // 200 OK
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 // Log the exception
                 return StatusCode(500, "An error occurred while restoring the user.");
@@ -204,7 +204,7 @@ namespace eConnectOne.API.Controllers
                 }
                 return Ok(new { message = "Password reset successfully." });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 // Log the exception
                 return StatusCode(500, "An error occurred while resetting the password.");
@@ -231,7 +231,7 @@ namespace eConnectOne.API.Controllers
                 }
                 return Ok(new { message = "Your password has been reset successfully." });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 // Log the exception
                 return StatusCode(500, "An error occurred while resetting your password.");
