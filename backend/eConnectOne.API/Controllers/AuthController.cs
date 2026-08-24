@@ -54,8 +54,19 @@ namespace eConnectOne.API.Controllers
             }
 
             // Verify password
-            bool passwordValid = BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash);
-            
+            bool passwordValid;
+            try
+            {
+                passwordValid = !string.IsNullOrEmpty(user.PasswordHash) &&
+                    BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash);
+            }
+            catch (BCrypt.Net.SaltParseException)
+            {
+                // PasswordHash is not a valid BCrypt hash (e.g. corrupted/seeded incorrectly).
+                // Treat as invalid credentials instead of leaking a 500 to the client.
+                passwordValid = false;
+            }
+
             if (!passwordValid)
             {
                 // Increment failed attempts
