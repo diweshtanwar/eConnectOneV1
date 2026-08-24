@@ -27,7 +27,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   private handleReset = () => {
     this.setState({ hasError: false, error: null });
-    window.location.href = '/eConnectOneV1/';
+    window.location.href = import.meta.env.BASE_URL;
   };
 
   private handleReload = () => {

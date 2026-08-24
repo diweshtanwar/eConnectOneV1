@@ -12,10 +12,12 @@ namespace eConnectOne.API.Controllers
     public class UsersController : ControllerBase
     {
         private readonly IUserService _userService;
+        private readonly ILogger<UsersController> _logger;
 
-        public UsersController(IUserService userService)
+        public UsersController(IUserService userService, ILogger<UsersController> logger)
         {
             _userService = userService;
+            _logger = logger;
         }
 
         // GET: api/Users (all users, optional roleId)
@@ -73,7 +75,7 @@ namespace eConnectOne.API.Controllers
             }
             catch (Exception ex)
             {
-                // Log the exception
+                _logger.LogError(ex, "An error occurred while creating the user.");
                 return StatusCode(500, "An error occurred while creating the user.");
             }
         }
@@ -97,7 +99,7 @@ namespace eConnectOne.API.Controllers
             }
             catch (Exception ex)
             {
-                // Log the exception
+                _logger.LogError(ex, "An error occurred while updating user {UserId}.", id);
                 return StatusCode(500, "An error occurred while updating the user.");
             }
         }
@@ -121,7 +123,7 @@ namespace eConnectOne.API.Controllers
             }
             catch (Exception ex)
             {
-                // Log the exception
+                _logger.LogError(ex, "An error occurred while updating general details for user {UserId}.", userId);
                 return StatusCode(500, "An error occurred while updating general user details.");
             }
         }
@@ -145,7 +147,7 @@ namespace eConnectOne.API.Controllers
             }
             catch (Exception ex)
             {
-                // Log the exception
+                _logger.LogError(ex, "An error occurred while updating details for user {UserId}.", userId);
                 return StatusCode(500, "An error occurred while updating CSP details.");
             }
         }
@@ -165,7 +167,7 @@ namespace eConnectOne.API.Controllers
             }
             catch (Exception ex)
             {
-                // Log the exception
+                _logger.LogError(ex, "An error occurred while soft deleting user {UserId}.", id);
                 return StatusCode(500, "An error occurred while soft deleting the user.");
             }
         }
@@ -185,7 +187,7 @@ namespace eConnectOne.API.Controllers
             }
             catch (Exception ex)
             {
-                // Log the exception
+                _logger.LogError(ex, "An error occurred while restoring user {UserId}.", id);
                 return StatusCode(500, "An error occurred while restoring the user.");
             }
         }
@@ -206,7 +208,7 @@ namespace eConnectOne.API.Controllers
             }
             catch (Exception ex)
             {
-                // Log the exception
+                _logger.LogError(ex, "An error occurred while resetting password for user {UserId}.", id);
                 return StatusCode(500, "An error occurred while resetting the password.");
             }
         }
@@ -233,7 +235,7 @@ namespace eConnectOne.API.Controllers
             }
             catch (Exception ex)
             {
-                // Log the exception
+                _logger.LogError(ex, "An error occurred while resetting password for current user.");
                 return StatusCode(500, "An error occurred while resetting your password.");
             }
         }
