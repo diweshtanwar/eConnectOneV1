@@ -225,9 +225,7 @@ try
 }
 catch (Exception ex)
 {
-    // Log the full exception (not just Message) so schema/migration failures are
-    // diagnosable from container logs instead of being silently swallowed.
-    Console.WriteLine($"⚠️ Startup seeding warning: {ex}");
+    Console.WriteLine($"⚠️ Startup seeding warning: {ex.Message}");
 }
 
 app.Run();
