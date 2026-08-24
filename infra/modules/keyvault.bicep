@@ -11,7 +11,7 @@ param principalObjectId string
 param tenantId string = subscription().tenantId
 
 @description('Enable purge protection?')
-param enablePurgeProtection bool = true
+param enablePurgeProtection bool = false
 
 @description('Enable soft-delete retention days')
 @minValue(7)

@@ -1,7 +1,7 @@
 @description('Deployment environment: dev | staging | prod')
 param environment string = 'dev'
 
-@description('Short unique suffix to avoid global name collisions (2-6 lowercase chars, e.g. your initials)')
+@description('Short unique suffix to avoid global name collisions')
 param uniqueSuffix string = 'ec1'
 
 @description('Location for all resources')
@@ -15,7 +15,7 @@ param postgresAdminPassword string
 @secure()
 param jwtSecretKey string
 
-@description('Object ID of the GitHub Actions service principal (for Key Vault secret write during deploy)')
+@description('Object ID of the GitHub Actions service principal')
 param deployPrincipalObjectId string = ''
 
 // --- Container Registry ---
@@ -43,7 +43,6 @@ module postgresModule 'modules/postgres.bicep' = {
   }
 }
 
-// Connection string — SSL without skipping cert validation
 var dbConnectionString = 'Host=${postgresModule.outputs.postgresFullyQualifiedDomainName};Port=5432;Database=eConnectOne;Username=pgadmin;Password=${postgresAdminPassword};SSL Mode=Require'
 
 // --- Key Vault ---
@@ -53,29 +52,23 @@ module kvModule 'modules/keyvault.bicep' = {
     keyVaultName: 'kv-econn-${environment}-${uniqueSuffix}'
     location: location
     principalObjectId: deployPrincipalObjectId
-    enablePurgeProtection: true
+    enablePurgeProtection: false
   }
 }
 
-// Store secrets in Key Vault
 resource kvSecretDb 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
   name: 'kv-econn-${environment}-${uniqueSuffix}/DATABASE-URL'
-  properties: {
-    value: dbConnectionString
-  }
+  properties: { value: dbConnectionString }
   dependsOn: [kvModule]
 }
 
 resource kvSecretJwt 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
   name: 'kv-econn-${environment}-${uniqueSuffix}/JWT-SECRET-KEY'
-  properties: {
-    value: jwtSecretKey
-  }
+  properties: { value: jwtSecretKey }
   dependsOn: [kvModule]
 }
 
-// --- Shared Container App Environment ---
-// Reuse existing environment if present, otherwise create one
+// --- Shared Container App Environment (1 per region limit) ---
 resource containerAppEnv 'Microsoft.App/managedEnvironments@2023-05-01' = {
   name: 'env-econnectone-${environment}'
   location: location
@@ -108,18 +101,6 @@ module backendAppModule 'modules/container-app.bicep' = {
   }
 }
 
-// Grant backend managed identity access to Key Vault secrets
-var kvRoleBackendName = guid('kv-econn-${environment}-${uniqueSuffix}', 'app-econnectone-api-${environment}', 'kvSecretsUser')
-resource kvRoleBackend 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: kvRoleBackendName
-  scope: resourceGroup()
-  properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')
-    principalId: backendAppModule.outputs.managedIdentityPrincipalId
-    principalType: 'ServicePrincipal'
-  }
-}
-
 // --- Frontend Container App ---
 module frontendAppModule 'modules/container-app.bicep' = {
   name: 'frontend-${environment}'
@@ -140,7 +121,19 @@ module frontendAppModule 'modules/container-app.bicep' = {
   }
 }
 
-// Outputs consumed by GitHub Actions
+// --- Grant backend managed identity Key Vault access ---
+var kvRoleBackendName = guid('kv-econn-${environment}-${uniqueSuffix}', 'app-econnectone-api-${environment}', 'kvSecretsUser')
+resource kvRoleBackend 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: kvRoleBackendName
+  scope: resourceGroup()
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')
+    principalId: backendAppModule.outputs.managedIdentityPrincipalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+// Outputs
 output acrLoginServer string = acrModule.outputs.acrLoginServer
 output acrName string = acrModule.outputs.acrName
 output backendHostname string = backendAppModule.outputs.defaultHostname
@@ -148,5 +141,3 @@ output frontendHostname string = frontendAppModule.outputs.defaultHostname
 output backendAppName string = backendAppModule.outputs.containerAppName
 output frontendAppName string = frontendAppModule.outputs.containerAppName
 output keyVaultName string = kvModule.outputs.keyVaultName
-// NOTE: dbConnectionString is intentionally NOT output here to avoid leaking in logs
-// The workflow reconstructs it from secrets directly
