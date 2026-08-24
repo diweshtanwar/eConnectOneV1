@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/eConnectOneV1/vite.svg" />
+    <link rel="icon" type="image/svg+xml" href="%BASE_URL%vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
     <title>eConnectOne Portal</title>
@@ -10,8 +10,9 @@
     <!-- Handle redirect from 404.html -->
     <script>
       (function() {
+        var baseUrl = '%BASE_URL%';
         var redirect = sessionStorage.getItem('redirectPath');
-        if (redirect && redirect !== '/eConnectOneV1/') {
+        if (redirect && redirect !== baseUrl) {
           sessionStorage.removeItem('redirectPath');
           history.replaceState(null, '', redirect);
         }
