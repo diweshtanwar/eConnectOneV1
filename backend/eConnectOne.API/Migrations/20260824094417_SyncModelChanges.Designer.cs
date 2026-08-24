@@ -12,7 +12,7 @@ using eConnectOne.API.Data;
 namespace eConnectOne.API.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260824090250_SyncModelChanges")]
+    [Migration("20260824094417_SyncModelChanges")]
     partial class SyncModelChanges
     {
         /// <inheritdoc />
@@ -2290,26 +2290,6 @@ namespace eConnectOne.API.Migrations
                     b.HasIndex("ApprovedByUserId");
 
                     b.ToTable("WithdrawalDetails");
-                });
-
-            modelBuilder.Entity("eConnectOne.API.ProblemType", b =>
-                {
-                    b.Property<int>("ProblemTypeId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("ProblemTypeId"));
-
-                    b.Property<string>("Description")
-                        .HasColumnType("text");
-
-                    b.Property<string>("ProblemTypeName")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("ProblemTypeId");
-
-                    b.ToTable("ProblemTypes");
                 });
 
             modelBuilder.Entity("eConnectOne.API.Models.Attachment", b =>
