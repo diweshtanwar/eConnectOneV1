@@ -1,5 +1,5 @@
 # Build stage
-FROM node:20-alpine AS build
+FROM node:26-alpine AS build
 WORKDIR /app
 ARG VITE_API_BASE_URL
 ARG VITE_BASE_PATH=/
