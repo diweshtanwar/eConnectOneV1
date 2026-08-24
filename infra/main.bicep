@@ -52,7 +52,7 @@ module kvModule 'modules/keyvault.bicep' = {
     keyVaultName: 'kv-econn-${environment}-${uniqueSuffix}'
     location: location
     principalObjectId: deployPrincipalObjectId
-    enablePurgeProtection: false
+    enablePurgeProtection: true
   }
 }
 
