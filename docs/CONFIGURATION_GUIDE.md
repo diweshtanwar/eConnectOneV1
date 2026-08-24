@@ -163,7 +163,7 @@ postgresql://user@server:password@server.postgres.database.azure.com:5432/databa
 ## Local Development Setup
 
 ### Prerequisites
-- .NET 9.0 SDK
+- .NET 10.0 SDK
 - PostgreSQL 14+ (local or managed service)
 - Node.js 20+ (for frontend)
 
