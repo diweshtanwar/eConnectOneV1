@@ -90,18 +90,20 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
+var frontendOrigin = Environment.GetEnvironmentVariable("FRONTEND_ORIGIN") ?? "https://localhost";
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend",
-        builder =>
+        policy =>
         {
-            builder.WithOrigins(
-                    "http://localhost:5173",           // Vite dev server
-                    "http://localhost:5174",           // Vite dev server alt port
-                    "http://localhost:3001",           // Alternative dev port
-                    "https://diweshtanwar.github.io",  // GitHub Pages root
-                    "https://diweshtanwar.github.io/eConnectOneV1",  // GitHub Pages subdirectory
-                    builder.Configuration["FRONTEND_ORIGIN"] ?? "https://localhost"  // Azure frontend
+            policy.WithOrigins(
+                    "http://localhost:5173",
+                    "http://localhost:5174",
+                    "http://localhost:3001",
+                    "https://diweshtanwar.github.io",
+                    "https://diweshtanwar.github.io/eConnectOneV1",
+                    frontendOrigin
                 )
                    .AllowAnyHeader()
                    .AllowAnyMethod()
