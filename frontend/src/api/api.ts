@@ -43,13 +43,13 @@ const getApiBaseUrl = () => {
   if (import.meta.env.VITE_API_BASE_URL) {
     return import.meta.env.VITE_API_BASE_URL;
   }
-  
-  // Check if we're in production (GitHub Pages)
+
+  // Production: frontend and backend are served from the same origin/container,
+  // so a relative path is enough.
   if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-    // Production - use Railway backend
-    return 'https://your-railway-app-name.up.railway.app/api';
+    return '/api';
   }
-  
+
   // Development - use local backend
   return 'http://localhost:5001/api';
 };

@@ -9,6 +9,7 @@ obj/
 packages/
 *.ncrunchproject
 *.ncrunchsolution
+backend/eConnectOne.API/wwwroot/
 
 # Frontend (Node)
 node_modules/

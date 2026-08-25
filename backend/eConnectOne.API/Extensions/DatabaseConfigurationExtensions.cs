@@ -8,7 +8,7 @@ namespace eConnectOne.API.Extensions;
 /// <summary>
 /// Extension methods for configuring database services.
 /// Handles connection string parsing from various formats (PostgreSQL URI, EF Core format, environment variables).
-/// Supports Railway, Render, AWS RDS, Azure Database, Supabase, and other PostgreSQL providers.
+/// Supports Azure Database for PostgreSQL and standard PostgreSQL connection strings.
 /// </summary>
 public static class DatabaseConfigurationExtensions
 {

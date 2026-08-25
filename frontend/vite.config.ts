@@ -11,10 +11,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        // Use Render backend if VITE_USE_RAILWAY=true, otherwise use local
-        target: process.env.VITE_USE_RAILWAY === 'true' 
-          ? 'https://econnectonev1.onrender.com'          
-          : 'http://localhost:5001',
+        target: process.env.VITE_API_PROXY_TARGET || 'http://localhost:5001',
         changeOrigin: true,
         secure: false
       }

@@ -75,11 +75,11 @@ resource containerAppEnv 'Microsoft.App/managedEnvironments@2023-05-01' = {
   properties: {}
 }
 
-// --- Backend Container App ---
-module backendAppModule 'modules/container-app.bicep' = {
-  name: 'backend-${environment}'
+// --- Application Container App (serves both API and frontend from one image) ---
+module appModule 'modules/container-app.bicep' = {
+  name: 'app-${environment}'
   params: {
-    containerAppName: 'app-econnectone-api-${environment}'
+    containerAppName: 'app-econnectone-${environment}'
     location: location
     containerAppEnvId: containerAppEnv.id
     containerImage: 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
@@ -101,34 +101,14 @@ module backendAppModule 'modules/container-app.bicep' = {
   }
 }
 
-// --- Frontend Container App ---
-module frontendAppModule 'modules/container-app.bicep' = {
-  name: 'frontend-${environment}'
-  params: {
-    containerAppName: 'app-econnectone-web-${environment}'
-    location: location
-    containerAppEnvId: containerAppEnv.id
-    containerImage: 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
-    containerRegistryServer: ''
-    cpuCores: '0.25'
-    memoryGb: '0.5'
-    minReplicas: 0
-    maxReplicas: 1
-    ingressEnabled: true
-    ingressTargetPort: 80
-    environmentVariables: {}
-    secrets: {}
-  }
-}
-
-// --- Grant backend managed identity Key Vault access ---
-var kvRoleBackendName = guid('kv-econn-${environment}-${uniqueSuffix}', 'app-econnectone-api-${environment}', 'kvSecretsUser')
-resource kvRoleBackend 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: kvRoleBackendName
+// --- Grant app managed identity Key Vault access ---
+var kvRoleAppName = guid('kv-econn-${environment}-${uniqueSuffix}', 'app-econnectone-${environment}', 'kvSecretsUser')
+resource kvRoleApp 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: kvRoleAppName
   scope: resourceGroup()
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')
-    principalId: backendAppModule.outputs.managedIdentityPrincipalId
+    principalId: appModule.outputs.managedIdentityPrincipalId
     principalType: 'ServicePrincipal'
   }
 }
@@ -136,8 +116,6 @@ resource kvRoleBackend 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
 // Outputs
 output acrLoginServer string = acrModule.outputs.acrLoginServer
 output acrName string = acrModule.outputs.acrName
-output backendHostname string = backendAppModule.outputs.defaultHostname
-output frontendHostname string = frontendAppModule.outputs.defaultHostname
-output backendAppName string = backendAppModule.outputs.containerAppName
-output frontendAppName string = frontendAppModule.outputs.containerAppName
+output appHostname string = appModule.outputs.defaultHostname
+output appName string = appModule.outputs.containerAppName
 output keyVaultName string = kvModule.outputs.keyVaultName

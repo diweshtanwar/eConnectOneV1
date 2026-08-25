@@ -17,7 +17,7 @@ builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
 builder.Services.Configure<DatabaseOptions>(builder.Configuration.GetSection("Database"));
 builder.Services.Configure<CorsOptions>(builder.Configuration.GetSection("Cors"));
 
-// Get DATABASE_URL from environment (supports Railway, Render, AWS, Azure)
+// Get DATABASE_URL from environment (e.g. injected from Azure Key Vault)
 // Falls back to appsettings configuration if not set
 var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
 
@@ -97,21 +97,30 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-var frontendOrigin = Environment.GetEnvironmentVariable("FRONTEND_ORIGIN") ?? "https://localhost";
+// Frontend + backend are served same-origin in production (single container), so CORS
+// is mainly needed for local development where Vite runs on a separate port.
+// Additional trusted origins can be added via appsettings "Cors:AllowedOrigins" or the
+// FRONTEND_ORIGIN environment variable without requiring a code change.
+var corsOptions = builder.Configuration.GetSection("Cors").Get<CorsOptions>() ?? new();
+var frontendOrigin = Environment.GetEnvironmentVariable("FRONTEND_ORIGIN");
+
+var allowedOrigins = new HashSet<string>(corsOptions.AllowedOrigins, StringComparer.OrdinalIgnoreCase)
+{
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:3001"
+};
+if (!string.IsNullOrWhiteSpace(frontendOrigin))
+{
+    allowedOrigins.Add(frontendOrigin);
+}
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend",
         policy =>
         {
-            policy.WithOrigins(
-                    "http://localhost:5173",
-                    "http://localhost:5174",
-                    "http://localhost:3001",
-                    "https://diweshtanwar.github.io",
-                    "https://diweshtanwar.github.io/eConnectOneV1",
-                    frontendOrigin
-                )
+            policy.WithOrigins(allowedOrigins.ToArray())
                    .AllowAnyHeader()
                    .AllowAnyMethod()
                    .AllowCredentials();
@@ -162,7 +171,8 @@ app.UseMiddleware<eConnectOne.API.Middleware.ErrorLoggingMiddleware>();
 
 app.UseHttpsRedirection();
 
-app.UseStaticFiles(); // Enable serving static files (e.g., attachments)
+app.UseDefaultFiles(); // Serve wwwroot/index.html for "/" requests (frontend SPA)
+app.UseStaticFiles(); // Enable serving static files (frontend assets, attachments)
 
 app.UseCors("AllowFrontend");
 
@@ -176,6 +186,10 @@ app.MapControllers();
 
 // Health check endpoint — used by deployment pipeline and Azure
 app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));
+
+// SPA fallback — any non-API route that doesn't match a static file serves the
+// React app's index.html so client-side routing (react-router) works on refresh/deep links.
+app.MapFallbackToFile("index.html");
 
 // Initialize database with EF Core migrations
 try

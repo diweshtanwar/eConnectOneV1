@@ -9,7 +9,7 @@ services:
     volumes:
       - 'E:/Docker/wsl/DockerDesktopWSL/econnectone/postgres:/var/lib/postgresql/data'
 
-  backend:
+  app:
     build:
       context: .
       dockerfile: Dockerfile
@@ -17,17 +17,8 @@ services:
       - postgres
     environment:
       DATABASE_URL: "postgresql://postgres:${POSTGRES_PASSWORD:-postgres@123}@postgres:5432/eConnectOne"
-      ASPNETCORE_PORT: "10000"
+      ASPNETCORE_PORT: "80"
       DOTNET_ENVIRONMENT: Production
-    ports:
-      - '10000:10000'
-
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    depends_on:
-      - backend
     ports:
       - '80:80'
 

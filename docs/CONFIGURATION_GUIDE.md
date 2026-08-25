@@ -1,8 +1,8 @@
-# eConnectOneV1 Multi-Platform Configuration Guide
+# eConnectOneV1 Configuration Guide
 
 ## Overview
 
-This guide explains how the simplified configuration system works and how to deploy to different platforms (Railway, Render, AWS, Azure) without code changes.
+This guide explains how the configuration system works and how the app is deployed to Azure as a single combined frontend+backend container.
 
 ## Architecture
 
@@ -72,86 +72,13 @@ appsettings.Production.json   (Production defaults)
 
 ## Deployment Guide
 
-### **Option 1: Deploy to Railway**
+### Deploy to Azure (Container Apps)
 
-1. Create Railway project and connect GitHub repository
+The app builds as a single Docker image (frontend + backend combined, see root `Dockerfile`) and deploys as one Azure Container App. See [AZURE_DEPLOYMENT_GUIDE.md](AZURE_DEPLOYMENT_GUIDE.md) for the full walkthrough (infra provisioning via `infra/main.bicep`, CI/CD via GitHub Actions).
 
-2. Add environment variables in Railway dashboard:
-   ```
-   DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@centerbeam.proxy.rlwy.net:PORT/railway
-   JWT_SECRET=your_secret_key_here
-   ASPNETCORE_ENVIRONMENT=Production
-   ```
-
-3. Railway automatically sets `PORT` environment variable (Railway handles this)
-
-4. Push to GitHub → Railway auto-deploys
-
-**Connection String Format:**
-```
-postgresql://user:password@centerbeam.proxy.rlwy.net:PORT/database_name
-```
-
----
-
-### **Option 2: Deploy to Render**
-
-1. Create Render Web Service and connect GitHub repository
-
-2. Add environment variables in Render dashboard:
-   ```
-   DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@aws-1-ap-southeast-2.pooler.supabase.com:6543/postgres
-   ASPNETCORE_ENVIRONMENT=Production
-   ```
-
-3. Push to GitHub → Render auto-deploys
-
-**Connection String Format:**
-```
-postgresql://user:password@host:port/database
-```
-
-**Note:** Render automatically provides `PORT` and `RENDER` environment variables
-
----
-
-### **Option 3: Deploy to AWS (ECS)**
-
-1. Create ECS cluster and task definition
-
-2. Set environment variables:
-   ```
-   DATABASE_URL=postgresql://postgres:PASSWORD@your-rds-instance.c9akciq32.us-east-1.rds.amazonaws.com:5432/econnectone
-   ASPNETCORE_ENVIRONMENT=Production
-   ASPNETCORE_URLS=http://+:5000
-   ```
-
-3. Use Docker image (automatically builds from Dockerfile)
-
-**Connection String Format:**
-```
-postgresql://user:password@your-instance.rds.amazonaws.com:5432/database
-```
-
-**Note:** For IAM authentication:
-```
-DATABASE_URL=postgresql://user:token@your-instance.rds.amazonaws.com:5432/database?sslmode=require
-```
-
----
-
-### **Option 4: Deploy to Azure**
-
-1. Create Azure App Service and connect GitHub repository
-
-2. Add environment variables in Azure dashboard:
-   ```
-   DATABASE_URL=postgresql://user@server:password@server.postgres.database.azure.com:5432/database
-   ASPNETCORE_ENVIRONMENT=Production
-   WEBSITES_PORT=80
-   ```
-
-3. Push to GitHub → Azure auto-deploys
+1. Provision infra with Bicep (`infra/main.bicep`) - creates ACR, PostgreSQL Flexible Server, Key Vault, and one Container App.
+2. `DATABASE_URL` and `JWT-SECRET-KEY` are stored in Key Vault and injected as Container App secrets.
+3. Push to `main` -> GitHub Actions builds the combined image and deploys it to the Container App.
 
 **Connection String Format:**
 ```
@@ -209,30 +136,14 @@ postgresql://user@server:password@server.postgres.database.azure.com:5432/databa
 
 ## Environment Variables Reference
 
-### All Platforms
+### Environment Variables
 
 | Variable | Required | Example | Notes |
 |----------|----------|---------|-------|
-| `DATABASE_URL` | ✅ | `postgresql://...` | Connection string (overrides appsettings) |
-| `ASPNETCORE_ENVIRONMENT` | ✅ | `Production` | Selects appsettings file |
-| `ASPNETCORE_URLS` | ⚠️ | `http://+:5001` | Auto-set by platform (optional) |
-
-### Platform-Specific
-
-**Railway:**
-- `RAILWAY_ENVIRONMENT` (auto-set)
-- `RAILWAY_STATIC_URL` (auto-set)
-- `PORT` (auto-set, optional override)
-
-**Render:**
-- `RENDER` (auto-set)
-- `RENDER_SERVICE_NAME` (auto-set)
-- `PORT` (auto-set, optional override)
-
-**AWS ECS:**
-- `AWS_REGION` (auto-set)
-- `AWS_EXECUTION_ENV` (auto-set)
-- `PORT` (required, set in task definition)
+| `DATABASE_URL` | Yes | `postgresql://...` | Connection string (overrides appsettings), injected from Key Vault |
+| `ASPNETCORE_ENVIRONMENT` | Yes | `Production` | Selects appsettings file |
+| `ASPNETCORE_URLS` | No | `http://+:80` | Set by the container/Container App |
+| `JWT-SECRET-KEY` | Yes | (secret) | Overrides `Jwt:Key` from Key Vault |
 
 **Azure:**
 - `WEBSITE_INSTANCE_ID` (auto-set)
@@ -242,49 +153,17 @@ postgresql://user@server:password@server.postgres.database.azure.com:5432/databa
 
 ## Database Connection String Formats
 
-### Railway
-```
-postgresql://postgres:password@centerbeam.proxy.rlwy.net:PORT/railway
-```
-
-### Render
-```
-postgresql://user:password@host:port/database
-```
-
-### AWS RDS (Standard)
-```
-postgresql://postgres:password@my-db-instance.c9akciq32.us-east-1.rds.amazonaws.com:5432/econnectone
-```
-
-### AWS RDS (IAM Auth)
-```
-postgresql://postgres:token@my-db-instance.c9akciq32.us-east-1.rds.amazonaws.com:5432/econnectone?sslmode=require
-```
-
 ### Azure Database for PostgreSQL
 ```
 postgresql://user@server:password@server.postgres.database.azure.com:5432/database
 ```
 
-### Supabase (Direct)
-```
-postgresql://postgres:password@db.project.supabase.co:5432/postgres
-```
-
-### Supabase (Connection Pooler)
-```
-postgresql://postgres.user:password@aws-1-ap-southeast-2.pooler.supabase.com:6543/postgres
-```
-
 ### Local Development
 ```
-postgresql://postgres:postgres@123@localhost:5432/eConnectOne
 Server=localhost;Port=5432;Database=eConnectOne;User Id=postgres;Password=postgres@123;
 ```
 
 ---
-
 ## Configuration Files Structure
 
 ### appsettings.json (Local Development Defaults)
@@ -306,9 +185,7 @@ Server=localhost;Port=5432;Database=eConnectOne;User Id=postgres;Password=postgr
     "DurationInMinutes": 60
   },
   "Cors": {
-    "AllowedOrigins": [
-      "https://diweshtanwar.github.io/eConnectOneV1"
-    ]
+    "AllowedOrigins": []
   }
 }
 ```
@@ -331,10 +208,7 @@ Server=localhost;Port=5432;Database=eConnectOne;User Id=postgres;Password=postgr
 {
   "Logging": { "LogLevel": { "Default": "Warning" } },
   "Cors": {
-    "AllowedOrigins": [
-      "https://diweshtanwar.github.io/eConnectOneV1",
-      "https://your-custom-domain.com"
-    ]
+    "AllowedOrigins": []
   }
 }
 ```
@@ -474,8 +348,6 @@ Configuration is loading Development settings but we're in Production
 - [.NET Configuration Documentation](https://learn.microsoft.com/en-us/dotnet/core/extensions/configuration)
 - [PostgreSQL Connection Strings](https://www.postgresql.org/docs/current/libpq-connect.html)
 - [Entity Framework Core Documentation](https://learn.microsoft.com/en-us/ef/core/)
-- [Railway Documentation](https://docs.railway.app/)
-- [Render Documentation](https://render.com/docs)
-- [AWS RDS Documentation](https://docs.aws.amazon.com/rds/)
-- [Azure App Service Documentation](https://learn.microsoft.com/en-us/azure/app-service/)
+- [Azure Container Apps Documentation](https://learn.microsoft.com/en-us/azure/container-apps/)
+- [Azure Database for PostgreSQL Documentation](https://learn.microsoft.com/en-us/azure/postgresql/)
 

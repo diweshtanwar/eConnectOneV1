@@ -40,13 +40,13 @@ Copy the entire JSON output as the value of `AZURE_CREDENTIALS`.
 
 Every push to `main` automatically:
 
-1. **Provisions** Azure resources (ACR + PostgreSQL + Container Apps) via Bicep — idempotent, safe to run repeatedly
-2. **Builds** backend and frontend Docker images, pushes to your ACR
+1. **Provisions** Azure resources (ACR + PostgreSQL + Container App) via Bicep — idempotent, safe to run repeatedly
+2. **Builds** a single combined frontend+backend Docker image, pushes to your ACR
 3. **Migrates** the database:
    - First deploy: creates all tables, seeds admin user (`admin` / `admin123`)
    - Subsequent deploys: only applies new migrations, **never touches existing data**
-4. **Deploys** new container images to Azure Container Apps
-5. **Health checks** and posts URLs to the workflow summary
+4. **Deploys** the new container image to Azure Container Apps
+5. **Health checks** and posts the URL to the workflow summary
 
 ---
 
@@ -63,16 +63,45 @@ Everything is re-provisioned automatically. The database will be fresh in the ne
 
 ---
 
+## One-Time Data Migration (Local → Azure)
+
+If you need to move your existing local Docker PostgreSQL data into Azure for the first deployment, use:
+
+```powershell
+pwsh -NoProfile -File .\scripts\Migrate-LocalToAzure.ps1 -Environment prod
+```
+
+- Defaults to the local Docker connection string: `Host=localhost;Port=5432;Database=eConnectOne;Username=postgres;Password=postgres@123`
+- Run `-WhatIf` first for a dry run, and add `-SkipConfirmation` only if you explicitly want to bypass the safety prompt
+- The script looks up the Azure PostgreSQL server and Key Vault by the naming pattern from `infra/main.bicep`; if no password secret is available, set `AZURE_POSTGRES_PASSWORD` before running
+- Use this only for the initial lift-and-shift of real data; ongoing schema changes are already handled automatically by EF Core migrations in `.github/workflows/azure-deploy.yml`
+
+---
+
+## Cleaning Up Old Two-Container Resources
+
+If you previously deployed the old split architecture (`app-econnectone-api-*` + `app-econnectone-web-*`), you can manually clean up leftover Azure resources with:
+
+```powershell
+pwsh -NoProfile -File .\scripts\Cleanup-OldAzureResources.ps1 -Environment prod
+```
+
+- Checks for the old Container Apps and legacy ACR repositories (`econnectone-backend`, `econnectone-frontend`)
+- Prompts before deleting anything; run `-WhatIf` first if you want to review what would be removed
+- Manual one-time cleanup only — this is intentionally not part of the CI/CD pipeline
+
+---
+
 ## Resource Names Created
 
 All resources are named with the environment suffix (`prod` by default):
 
 | Resource | Name |
 |---|---|
-| Container Registry | `creconnectoneeprod` |
-| PostgreSQL Server | `pg-econnectone-prod` |
-| Backend Container App | `app-econnectone-api-prod` |
-| Frontend Container App | `app-econnectone-web-prod` |
+| Container Registry | `acreconnprodec1` |
+| PostgreSQL Server | `pg-econn-prod-ec1` |
+| Key Vault | `kv-econn-prod-ec1` |
+| App Container App (frontend + backend) | `app-econnectone-prod` |
 
 To change environment, update `ENVIRONMENT: prod` in `.github/workflows/azure-deploy.yml`.
 
@@ -84,6 +113,5 @@ To change environment, update `ENVIRONMENT: prod` in `.github/workflows/azure-de
 |---|---|---|
 | Container Registry | Basic | ~$5 |
 | PostgreSQL Flexible Server | Standard_B1ms | ~$15 |
-| Container Apps (backend) | Scale-to-zero | ~$0–5 |
-| Container Apps (frontend) | Scale-to-zero | ~$0–3 |
-| **Total** | | **~$20–28/month** |
+| Container App (frontend + backend) | Scale-to-zero | ~$0–5 |
+| **Total** | | **~$20–25/month** |
