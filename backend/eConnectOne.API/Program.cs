@@ -275,3 +275,7 @@ catch (Exception ex)
 }
 
 app.Run();
+
+// Exposes the implicitly-generated Program class so WebApplicationFactory<Program>
+// can be used from the eConnectOne.API.Tests project for integration testing.
+public partial class Program { }

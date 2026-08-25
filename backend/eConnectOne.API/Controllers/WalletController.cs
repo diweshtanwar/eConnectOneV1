@@ -143,7 +143,7 @@ namespace eConnectOne.API.Controllers
         }
 
         [HttpGet("user/{userId}")]
-        [Authorize(Roles = "Master Admin,Admin,HO User")]
+        [Authorize(Roles = "Master Admin,Admin,HO user")]
         public async Task<ActionResult<Wallet>> GetUserWallet(int userId)
         {
             var wallet = await _context.Wallets
@@ -157,7 +157,7 @@ namespace eConnectOne.API.Controllers
         }
 
         [HttpPost("process-withdrawal")]
-        [Authorize(Roles = "Master Admin,Admin,HO User")]
+        [Authorize(Roles = "Master Admin,Admin,HO user")]
         public async Task<ActionResult> ProcessWithdrawal(
             [FromBody] ProcessApprovalRequest request)
         {
@@ -243,7 +243,7 @@ namespace eConnectOne.API.Controllers
         }
 
         [HttpPost("process-deposit")]
-        [Authorize(Roles = "Master Admin,Admin,HO User")]
+        [Authorize(Roles = "Master Admin,Admin,HO user")]
         public async Task<ActionResult> ProcessDeposit(
             [FromBody] ProcessApprovalRequest request)
         {
@@ -300,7 +300,7 @@ namespace eConnectOne.API.Controllers
         }
 
         [HttpPost("bulk-approve")]
-        [Authorize(Roles = "Master Admin,Admin,HO User")]
+        [Authorize(Roles = "Master Admin,Admin,HO user")]
         public async Task<ActionResult> BulkApprove(
             [FromBody] BulkApprovalRequest request)
         {

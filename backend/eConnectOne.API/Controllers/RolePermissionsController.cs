@@ -9,7 +9,7 @@ namespace eConnectOne.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize(Roles = "Master Admin")]
+    [Authorize(Roles = "Master Admin,Admin")]
     public class RolePermissionsController : ControllerBase
     {
         private readonly ApplicationDbContext _context;

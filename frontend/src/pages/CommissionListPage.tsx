@@ -144,7 +144,7 @@ const CommissionListPage: React.FC<CommissionListPageProps> = ({
       {message && <Alert severity={message.includes('success') ? 'success' : 'error'} sx={{ mb: 2 }}>{message}</Alert>}
       {commissions.length === 0 ? (
         <Alert severity="info">
-          No commissions found for {selectedYear}. {(user?.role === 'Master Admin' || user?.role === 'Admin') && 'Click "Create Commission" to add new commission records.'}
+          No commissions found for {selectedYear}. {(user?.roleName === 'Master Admin' || user?.roleName === 'Admin') && 'Click "Create Commission" to add new commission records.'}
         </Alert>
       ) : viewMode === 'tile' ? (
         <Grid container spacing={2}>

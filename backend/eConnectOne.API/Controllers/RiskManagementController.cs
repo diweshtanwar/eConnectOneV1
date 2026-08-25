@@ -7,7 +7,7 @@ namespace eConnectOne.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize(Roles = "Master Admin,Admin,HO User")]
+    [Authorize(Roles = "Master Admin,Admin,HO user")]
     public class RiskManagementController : ControllerBase
     {
         private readonly IFraudDetectionService _fraudDetectionService;
