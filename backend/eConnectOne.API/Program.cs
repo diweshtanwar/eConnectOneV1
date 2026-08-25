@@ -187,8 +187,12 @@ app.MapControllers();
 // Health check endpoint — used by deployment pipeline and Azure
 app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));
 
-// SPA fallback — any non-API route that doesn't match a static file serves the
-// React app's index.html so client-side routing (react-router) works on refresh/deep links.
+// SPA fallback for the React portal — any /app/* route that doesn't match a static
+// file serves the portal's own index.html so client-side routing works on refresh/deep links.
+app.MapFallbackToFile("/app/{*path}", "app/index.html");
+
+// Fallback for everything else — serves the public landing site's index.html
+// (landing-site/ is copied to wwwroot root, so this is the eGramin marketing site).
 app.MapFallbackToFile("index.html");
 
 // Initialize database with EF Core migrations

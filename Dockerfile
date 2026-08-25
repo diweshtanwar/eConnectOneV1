@@ -1,9 +1,10 @@
-# Multi-stage build for eConnectOne — combined frontend + backend, single container
-# Stage 1: Build the React/Vite frontend
+# Multi-stage build for eConnectOne — combined landing site + frontend (portal) + backend, single container
+# Stage 1: Build the React/Vite frontend (portal)
+# Served under /app so the public landing-site/ can occupy the domain root ("/").
 FROM node:20-alpine AS frontend-build
 WORKDIR /src/frontend
 ARG VITE_API_BASE_URL=
-ARG VITE_BASE_PATH=/
+ARG VITE_BASE_PATH=/app/
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 ENV VITE_BASE_PATH=$VITE_BASE_PATH
 COPY frontend/package*.json ./
@@ -29,13 +30,15 @@ RUN dotnet build eConnectOne.API.csproj -c Release -o /app/build
 # Publish
 RUN dotnet publish eConnectOne.API.csproj -c Release -o /app/publish
 
-# Stage 3: Runtime image — serves the API and the built frontend from wwwroot
+# Stage 3: Runtime image — serves the API, the public landing-site at "/",
+# and the built React portal under "/app" — all from wwwroot
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
 
 WORKDIR /app
 
 COPY --from=backend-build /app/publish .
-COPY --from=frontend-build /src/frontend/dist ./wwwroot
+COPY landing-site/ ./wwwroot/
+COPY --from=frontend-build /src/frontend/dist ./wwwroot/app
 
 # Expose ports: 80 for Azure Container Apps/App Service, 10000 for local dev
 EXPOSE 80 10000
