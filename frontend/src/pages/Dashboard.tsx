@@ -485,9 +485,12 @@ export const Dashboard = () => {
               </Box>
               <Typography variant="body2" sx={{ fontWeight: 500, color: theme.palette.text.primary }}>
                 For support, queries, or feedback:<br/>
-                <b>Email:</b> <a href="mailto:support@econnectone.com" style={{ color: theme.palette.primary.main, textDecoration: 'underline' }}>support@econnectone.com</a><br/>
-                <b>Phone:</b> <a href="tel:+919876543210" style={{ color: theme.palette.primary.main, textDecoration: 'underline' }}>+91-9876543210</a><br/>
-                <b>Address:</b> 123, Main Street, Mumbai, India
+                <b>Email:</b> <a href="mailto:helpdesk[dot]egramin[at]gmail[dot]com" style={{ color: theme.palette.primary.main, textDecoration: 'underline' }}>support@econnectone.com</a><br/>
+                <b>Phone:</b> <a href="tel:+91-0361-3511441" style={{ color: theme.palette.primary.main, textDecoration: 'underline' }}>+91-9876543210</a><br/>
+                <b>Address:</b> e-Gramin Services Pvt. Ltd<br/>
+                House No. 39, Sapta Swahid Path<br/>
+                Dispur, Guwahati - 781006<br/>
+                Assam, India
               </Typography>
             </Paper>
           </Grid>
