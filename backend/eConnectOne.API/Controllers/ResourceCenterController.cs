@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using eConnectOne.API.Data;
 using eConnectOne.API.Models;
 using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace eConnectOne.API.Controllers
 {
@@ -187,13 +188,13 @@ namespace eConnectOne.API.Controllers
 
         private int GetCurrentUserId()
         {
-            var userIdClaim = User.FindFirst("id")?.Value;
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             return int.TryParse(userIdClaim, out var userId) ? userId : 1;
         }
 
         private string GetCurrentUserRole()
         {
-            return User.FindFirst("role")?.Value ?? "CSP";
+            return User.FindFirst(ClaimTypes.Role)?.Value ?? "CSP";
         }
     }
 

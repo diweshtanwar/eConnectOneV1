@@ -21,7 +21,7 @@ namespace eConnectOne.API.Controllers
         [HttpGet]
         public async Task<ActionResult> GetCommissions([FromQuery] int? year = null)
         {
-            var userRole = User.FindFirst("role")?.Value;
+            var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             
             if (!int.TryParse(userIdClaim, out int userId))
@@ -45,7 +45,7 @@ namespace eConnectOne.API.Controllers
             if (!Guid.TryParse(commissionId, out var id))
                 return BadRequest("Invalid commission ID");
 
-            var userRole = User.FindFirst("role")?.Value;
+            var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             
             if (!int.TryParse(userIdClaim, out int userId))
@@ -170,7 +170,7 @@ namespace eConnectOne.API.Controllers
         [HttpGet("years")]
         public async Task<ActionResult> GetAvailableYears()
         {
-            var userRole = User.FindFirst("role")?.Value;
+            var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             
             if (!int.TryParse(userIdClaim, out int userId))

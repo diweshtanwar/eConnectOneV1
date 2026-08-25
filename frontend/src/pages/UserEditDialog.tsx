@@ -209,8 +209,12 @@ const UserEditDialog: React.FC<UserEditDialogProps> = ({ open, user, onClose, on
   const handleUserSubmit = async () => {
     setError(''); setLoading(true);
     try {
+      // Note: username is intentionally NOT sent here — the backend's UserUpdateDto
+      // does not have a Username property (usernames cannot be changed once created),
+      // so including it would be silently ignored by the API. The Username field
+      // above is disabled to make this clear in the UI instead of showing a
+      // misleading "success" message that implies the change took effect.
       const updateDto = {
-        username: form.username,
         fullName: form.fullName,
         email: form.email,
         mobileNumber: form.mobileNumber,
@@ -313,7 +317,8 @@ const UserEditDialog: React.FC<UserEditDialogProps> = ({ open, user, onClose, on
               onChange={handleChange} 
               fullWidth 
               margin="normal"
-              helperText="Current username"
+              disabled
+              helperText="Username cannot be changed after account creation"
             />
             <TextField label="Full Name" name="fullName" value={form.fullName || ''} onChange={handleChange} fullWidth margin="normal" />
             <TextField label="Email" name="email" value={form.email || ''} onChange={handleChange} fullWidth margin="normal" />

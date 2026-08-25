@@ -3,6 +3,7 @@ using eConnectOne.API.DTOs;
 using eConnectOne.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace eConnectOne.API.Controllers
 {
@@ -220,7 +221,7 @@ namespace eConnectOne.API.Controllers
             try
             {
                 // Get current user ID from JWT token
-                var userIdClaim = User.FindFirst("id")?.Value;
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
                 if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
                 {
                     return Unauthorized("Invalid user token.");
@@ -242,13 +243,13 @@ namespace eConnectOne.API.Controllers
 
         private int GetCurrentUserId()
         {
-            var userIdClaim = User.FindFirst("id")?.Value;
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             return int.TryParse(userIdClaim, out var userId) ? userId : 1;
         }
 
         private string GetCurrentUserRole()
         {
-            return User.FindFirst("role")?.Value ?? "HO user";
+            return User.FindFirst(ClaimTypes.Role)?.Value ?? "HO user";
         }
     }
 }

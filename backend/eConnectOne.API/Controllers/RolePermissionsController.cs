@@ -4,6 +4,7 @@ using eConnectOne.API.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace eConnectOne.API.Controllers
 {
@@ -177,7 +178,7 @@ namespace eConnectOne.API.Controllers
                 return Unauthorized(new { message = "User not authenticated" });
             }
 
-            var userIdClaim = User.FindFirst("id")?.Value;
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
             {
                 return Unauthorized(new { message = "Invalid user ID claim" });

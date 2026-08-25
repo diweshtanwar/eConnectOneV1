@@ -52,8 +52,13 @@ export const RiskAlerts: React.FC = () => {
 
   const fetchAlerts = async () => {
     try {
-      const response = await api.get('/risk-management/alerts');
-      setAlerts(response.data);
+      const response = await api.get('/riskmanagement/alerts');
+      // Defensive check: only ever set state to an array. If the backend route is
+      // ever wrong/missing again, the SPA fallback silently returns the landing
+      // page's HTML with a 200 status instead of a 404 — without this check,
+      // `alerts` would become a string and `alerts.map()` below would crash the
+      // whole page (this happened in production with the old '/risk-management/alerts' typo).
+      setAlerts(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error('Failed to fetch risk alerts:', error);
     } finally {

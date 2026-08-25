@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Net;
+using System.Security.Claims;
 
 namespace eConnectOne.API.Middleware
 {
@@ -34,7 +35,7 @@ namespace eConnectOne.API.Middleware
 
         private string GetClientId(HttpContext context)
         {
-            var userId = context.User?.FindFirst("id")?.Value;
+            var userId = context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             var ip = context.Connection.RemoteIpAddress?.ToString();
             return userId ?? ip ?? "anonymous";
         }

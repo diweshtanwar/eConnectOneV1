@@ -1,5 +1,6 @@
 using System;
 using System.Net;
+using System.Security.Claims;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
@@ -30,7 +31,7 @@ namespace eConnectOne.API.Middleware
                 var traceId = context.TraceIdentifier;
                 _logger.LogError(ex, "Unhandled exception occurred. TraceId: {TraceId}", traceId);
 
-                var userId = context.User?.Identity?.IsAuthenticated == true ? int.Parse(context.User.FindFirst("id")?.Value ?? "0") : (int?)null;
+                var userId = context.User?.Identity?.IsAuthenticated == true ? int.Parse(context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0") : (int?)null;
                 var ip = context.Connection.RemoteIpAddress?.ToString();
                 await auditLogService.LogAsync(
                     action: "Exception",

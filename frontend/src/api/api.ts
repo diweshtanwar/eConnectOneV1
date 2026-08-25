@@ -76,7 +76,10 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401 && !window.location.hash.includes('/login')) {
       localStorage.removeItem('token');
-      window.location.href = '/#/login';
+      // Use the portal's own base path (e.g. "/app/") instead of a hardcoded "/" so this
+      // redirect lands back on the portal's login page, not the public landing site's root
+      // (which doesn't understand "#/login" and would just show the marketing homepage).
+      window.location.href = `${import.meta.env.BASE_URL}#/login`;
     }
     return Promise.reject(error);
   }
