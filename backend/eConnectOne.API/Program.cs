@@ -189,7 +189,10 @@ app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = Dat
 
 // SPA fallback for the React portal — any /app/* route that doesn't match a static
 // file serves the portal's own index.html so client-side routing works on refresh/deep links.
-app.MapFallbackToFile("/app/{*path}", "app/index.html");
+// The ":nonfile" constraint (matching the default single-argument MapFallbackToFile behavior)
+// ensures requests for actual files (e.g. missing/renamed JS chunks) correctly 404 instead of
+// being masked as a 200 text/html response, which breaks the browser's module-script MIME check.
+app.MapFallbackToFile("/app/{*path:nonfile}", "app/index.html");
 
 // Fallback for everything else — serves the public landing site's index.html
 // (landing-site/ is copied to wwwroot root, so this is the eGramin marketing site).
