@@ -667,6 +667,18 @@ display: block; background: #dddddd; content: '';}*/
     margin-right: 15px;
 }
 
+.footer-login-link {
+    font-size: 12px;
+    color: #fff;
+    opacity: 0.8;
+    text-decoration: underline;
+}
+
+.footer-login-link:hover {
+    opacity: 1;
+    color: #fff;
+}
+
 @-webkit-keyframes blink {
     0% {
         opacity: 1;
