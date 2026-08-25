@@ -6,9 +6,11 @@ using eConnectOne.API.Models.Configuration;
 using eConnectOne.API.Services;
 using eConnectOne.API.Services.Tickets;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
+using Microsoft.Net.Http.Headers;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -172,7 +174,30 @@ app.UseMiddleware<eConnectOne.API.Middleware.ErrorLoggingMiddleware>();
 app.UseHttpsRedirection();
 
 app.UseDefaultFiles(); // Serve wwwroot/index.html for "/" requests (frontend SPA)
-app.UseStaticFiles(); // Enable serving static files (frontend assets, attachments)
+
+// Cache-Control policy for static files:
+// - *.html (landing site pages + both index.html files) is never cached, so a browser
+//   always revalidates and never serves a stale index.html that references a
+//   deleted/renamed hashed asset after a new deployment.
+// - /app/assets/* is the Vite build output — filenames are content-hashed, so it's safe
+//   (and desirable) to cache them aggressively and immutably; a content change always
+//   produces a new filename.
+var staticFileOptions = new StaticFileOptions
+{
+    OnPrepareResponse = ctx =>
+    {
+        var path = ctx.Context.Request.Path.Value ?? string.Empty;
+        if (path.Contains("/app/assets/", StringComparison.OrdinalIgnoreCase))
+        {
+            ctx.Context.Response.Headers[HeaderNames.CacheControl] = "public, max-age=31536000, immutable";
+        }
+        else if (path.EndsWith(".html", StringComparison.OrdinalIgnoreCase))
+        {
+            ctx.Context.Response.Headers[HeaderNames.CacheControl] = "no-cache";
+        }
+    }
+};
+app.UseStaticFiles(staticFileOptions); // Enable serving static files (frontend assets, attachments)
 
 app.UseCors("AllowFrontend");
 
@@ -192,11 +217,11 @@ app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = Dat
 // The ":nonfile" constraint (matching the default single-argument MapFallbackToFile behavior)
 // ensures requests for actual files (e.g. missing/renamed JS chunks) correctly 404 instead of
 // being masked as a 200 text/html response, which breaks the browser's module-script MIME check.
-app.MapFallbackToFile("/app/{*path:nonfile}", "app/index.html");
+app.MapFallbackToFile("/app/{*path:nonfile}", "app/index.html", staticFileOptions);
 
 // Fallback for everything else — serves the public landing site's index.html
 // (landing-site/ is copied to wwwroot root, so this is the eGramin marketing site).
-app.MapFallbackToFile("index.html");
+app.MapFallbackToFile("index.html", staticFileOptions);
 
 // Initialize database with EF Core migrations
 try

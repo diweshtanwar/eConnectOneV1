@@ -46,7 +46,35 @@ Every push to `main` automatically:
    - First deploy: creates all tables, seeds admin user (`admin` / `admin123`)
    - Subsequent deploys: only applies new migrations, **never touches existing data**
 4. **Deploys** the new container image to Azure Container Apps
-5. **Health checks** and posts the URL to the workflow summary
+5. **Health checks**, **smoke tests** (landing site, `/app` portal, and its built JS asset), and posts the URL to the workflow summary
+
+> **Note:** the `deploy` job only runs if `build` (and `migrate`) succeed. If the Docker build fails (e.g. an `npm ci` dependency conflict), the pipeline stops there and **production keeps running whatever image the last successful pipeline deployed** — nothing is deployed half-built.
+
+---
+
+## Site Layout: Landing Site + Portal (single container)
+
+The container serves two independent front-ends from one ASP.NET Core app (`wwwroot`):
+
+| URL path | Source | What it is |
+|---|---|---|
+| `/` | [`landing-site/`](../landing-site) | Public eGramin marketing site — plain HTML/CSS/JS, copied into the image as-is (no build step) |
+| `/app/` | [`frontend/`](../frontend) (Vite/React, `HashRouter`) | The eConnectOne portal (login, dashboard, ticket/user/wallet management, etc.) |
+
+Both are built into the same [Dockerfile](../Dockerfile):
+- `landing-site/` → `wwwroot/`
+- `frontend` build output (built with `VITE_BASE_PATH=/app/`) → `wwwroot/app/`
+
+`Program.cs` registers **two separate SPA fallback routes** so client-side routing (refresh/deep-link) works for both apps without them interfering with each other:
+
+```csharp
+app.MapFallbackToFile("/app/{*path:nonfile}", "app/index.html", staticFileOptions); // portal
+app.MapFallbackToFile("index.html", staticFileOptions);                             // landing site
+```
+
+**The `:nonfile` route constraint is required.** Without it, the `/app/{*path}` fallback matches *every* request under `/app/`, including requests for real files (e.g. a JS chunk that 404s due to a stale cache or bad deploy) — silently returning the portal's `index.html` (`200 text/html`) instead of a real `404`. Browsers then reject that response with `Failed to load module script: ... MIME type of "text/html"`, since they expected real JavaScript. This exact bug broke the portal's login page in production once — if you ever add another fallback route here, always use `{*path:nonfile}`, matching the default behavior of the no-pattern `MapFallbackToFile(filePath)` overload.
+
+The CI/CD pipeline's **"Smoke test portal"** step (see [azure-deploy.yml](../.github/workflows/azure-deploy.yml)) automatically re-checks this on every deploy: it fetches `/app/`, extracts the JS asset it references, confirms that asset is served as real JavaScript (not HTML), and confirms a deliberately-fake path under `/app/` returns a real `404`.
 
 ---
 
