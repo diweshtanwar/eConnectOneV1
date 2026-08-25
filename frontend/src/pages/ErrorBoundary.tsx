@@ -4,6 +4,14 @@ import { Refresh, Home, BugReport } from '@mui/icons-material';
 
 interface Props {
   children: ReactNode;
+  /**
+   * When true, renders a smaller fallback meant to be embedded inside the page
+   * content area (e.g. wrapped around a single route's page component inside
+   * Layout) instead of taking over the full viewport. Used so a crash on one
+   * page doesn't also hide the header/sidebar navigation — the user can still
+   * navigate elsewhere without a full page reload.
+   */
+  compact?: boolean;
 }
 
 interface State {
@@ -34,8 +42,66 @@ export class ErrorBoundary extends Component<Props, State> {
     window.location.reload();
   };
 
+  /** Clears the error locally without a full page reload — used by the compact,
+   * page-level fallback so the rest of the app (header/sidebar) is unaffected. */
+  private handleRetry = () => {
+    this.setState({ hasError: false, error: null });
+  };
+
   public render() {
     if (this.state.hasError) {
+      if (this.props.compact) {
+        return (
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 2 }}>
+            <Paper
+              elevation={2}
+              sx={{
+                p: { xs: 3, md: 4 },
+                textAlign: 'center',
+                borderRadius: 3,
+                maxWidth: 480,
+              }}
+            >
+              <BugReport sx={{ fontSize: 48, color: 'error.main', mb: 1.5 }} />
+              <Typography variant="h6" gutterBottom fontWeight={700}>
+                This page ran into a problem
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                We're sorry for the inconvenience. You can try again, or use the navigation
+                to go to a different page — the rest of the app is unaffected.
+              </Typography>
+
+              {process.env.NODE_ENV === 'development' && this.state.error && (
+                <Box
+                  sx={{
+                    mb: 3,
+                    p: 1.5,
+                    background: '#f5f5f5',
+                    borderRadius: 2,
+                    textAlign: 'left',
+                    maxHeight: 160,
+                    overflow: 'auto',
+                  }}
+                >
+                  <Typography variant="caption" component="pre" sx={{ fontSize: '0.7rem' }}>
+                    {this.state.error.toString()}
+                  </Typography>
+                </Box>
+              )}
+
+              <Button
+                variant="contained"
+                startIcon={<Refresh />}
+                onClick={this.handleRetry}
+                sx={{ borderRadius: 50, textTransform: 'none' }}
+              >
+                Try Again
+              </Button>
+            </Paper>
+          </Box>
+        );
+      }
+
       return (
         <Box
           sx={{

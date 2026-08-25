@@ -1,7 +1,6 @@
 import React from 'react';
 import { Box, Card, CardMedia, Typography, IconButton } from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
-import DescriptionIcon from '@mui/icons-material/Description';
+import { Delete as DeleteIcon, Description as DescriptionIcon } from '@mui/icons-material';
 
 interface TicketTypeImagePreviewProps {
   files: File[];

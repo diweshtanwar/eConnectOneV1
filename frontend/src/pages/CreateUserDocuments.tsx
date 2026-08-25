@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Box, TextField, Button, Typography, Alert, MenuItem, Chip, LinearProgress } from '@mui/material';
 import { compressFile, getCompressionInfo } from '../utils/fileCompression';
-import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import { CloudUpload as CloudUploadIcon } from '@mui/icons-material';
 
 const documentTypes = [
 	'Agreement',

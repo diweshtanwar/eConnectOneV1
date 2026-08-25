@@ -7,8 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLookupData } from '../hooks/useLookupData';
 import { FileUpload } from '../components/FileUpload';
 import { AttachmentGallery } from '../components/AttachmentGallery';
-import DeleteIcon from '@mui/icons-material/Delete';
-import DownloadIcon from '@mui/icons-material/Download';
+import { Delete as DeleteIcon, Download as DownloadIcon } from '@mui/icons-material';
 
 export const TicketDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();

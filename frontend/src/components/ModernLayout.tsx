@@ -44,6 +44,7 @@ import { SessionTimer } from './SessionTimer';
 import { broadcastApi, messagesApi, chatApi } from '../api/api';
 import { useSmartPolling } from '../hooks/useSmartPolling';
 import { enhancedCache } from '../utils/enhancedCache';
+import { ErrorBoundary } from '../pages/ErrorBoundary';
 
 const drawerWidth = 280;
 const collapsedWidth = 64;
@@ -458,7 +459,12 @@ export const Layout: React.FC<LayoutProps> = ({ children, menuItems, title }) =>
             minHeight: 'calc(100vh - 120px)',
           }}
         >
-          {children}
+          {/* key={location.pathname} forces this boundary to remount (clearing any
+              caught error) whenever the route changes, so a crash on one page
+              doesn't persist as a stuck error screen after navigating away. */}
+          <ErrorBoundary compact key={location.pathname}>
+            {children}
+          </ErrorBoundary>
         </Paper>
       </Box>
 

@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { Box, Typography, Button, LinearProgress, Alert, Chip } from '@mui/material';
 import { compressFile, getCompressionInfo } from '../utils/fileCompression';
-import CloudUploadIcon from '@mui/icons-material/CloudUpload';
-import CompressIcon from '@mui/icons-material/Compress';
+import { CloudUpload as CloudUploadIcon, Compress as CompressIcon } from '@mui/icons-material';
 
 interface FileUploadProps {
   onFileSelect: (file: File) => void;
