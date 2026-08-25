@@ -205,23 +205,35 @@ jobs:
         run: |
           HOST="https://${{ needs.provision.outputs.app_hostname }}"
 
-          # 1. /app/ must serve the portal's index.html
-          APP_HTML=$(curl -s "$HOST/app/")
-          APP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$HOST/app/")
+          # Retry loop: right after "deploy app", the new revision may still be rolling
+          # out/warming up for a few seconds even though /health already returned 200
+          # (health check hits the app process, not necessarily the fully-settled
+          # ingress/revision routing). Poll a few times before failing the build.
+          for i in $(seq 1 10); do
+            APP_HTML=$(curl -s "$HOST/app/")
+            APP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$HOST/app/")
+            ASSET_PATH=$(echo "$APP_HTML" | grep -oE '/app/assets/[A-Za-z0-9_.-]+\.js' | head -n1)
+
+            if [ "$APP_STATUS" = "200" ] && [ -n "$ASSET_PATH" ]; then
+              ASSET_CONTENT_TYPE=$(curl -s -o /dev/null -w "%{content_type}" "$HOST$ASSET_PATH")
+              case "$ASSET_CONTENT_TYPE" in
+                *javascript*) break ;;
+              esac
+            fi
+
+            echo "Portal not ready yet, retrying... attempt $i/10"; sleep 10
+          done
+
           if [ "$APP_STATUS" != "200" ]; then
             echo "Portal smoke test failed: /app/ returned $APP_STATUS"; exit 1
           fi
-
-          # 2. Extract the hashed JS entry chunk referenced by index.html and verify the
-          #    server actually serves it as JavaScript (not the HTML fallback). This is the
-          #    exact regression class that broke login in production: a too-broad SPA
-          #    fallback route silently served index.html (200 text/html) for missing/renamed
-          #    JS chunks, which the browser then rejected as an invalid module script.
-          ASSET_PATH=$(echo "$APP_HTML" | grep -oE '/app/assets/[A-Za-z0-9_.-]+\.js' | head -n1)
           if [ -z "$ASSET_PATH" ]; then
             echo "Portal smoke test failed: could not find a referenced JS asset in /app/ index.html"
             exit 1
           fi
+
+          # Final confirmation with a clear failure message (redundant with the loop above,
+          # but ensures a failed run always explains exactly what went wrong).
           ASSET_CONTENT_TYPE=$(curl -s -o /dev/null -w "%{content_type}" "$HOST$ASSET_PATH")
           case "$ASSET_CONTENT_TYPE" in
             *javascript*) echo "Portal JS asset OK ($ASSET_PATH -> $ASSET_CONTENT_TYPE)" ;;
@@ -231,8 +243,8 @@ jobs:
               ;;
           esac
 
-          # 3. A deliberately nonexistent file under /app/ must 404, not fall back to HTML —
-          #    guards against the SPA fallback route regressing to match file-like paths again.
+          # A deliberately nonexistent file under /app/ must 404, not fall back to HTML —
+          # guards against the SPA fallback route regressing to match file-like paths again.
           FAKE_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$HOST/app/__smoke_test_nonexistent__.js")
           if [ "$FAKE_STATUS" != "404" ]; then
             echo "Portal smoke test failed: nonexistent asset under /app/ returned $FAKE_STATUS (expected 404)"
