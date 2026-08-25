@@ -8,7 +8,10 @@ ARG VITE_BASE_PATH=/app/
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 ENV VITE_BASE_PATH=$VITE_BASE_PATH
 COPY frontend/package*.json ./
-RUN npm ci --silent
+# --legacy-peer-deps: @vitejs/plugin-react@6's optional peer on @rolldown/plugin-babel
+# conflicts with another Babel peer in the tree; npm ci enforces peer resolution strictly
+# even though the lockfile already pins compatible versions.
+RUN npm ci --silent --legacy-peer-deps
 COPY frontend/ ./
 RUN npm run build
 
