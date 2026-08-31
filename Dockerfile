@@ -1,7 +1,7 @@
 # Multi-stage build for eConnectOne — combined landing site + frontend (portal) + backend, single container
 # Stage 1: Build the React/Vite frontend (portal)
 # Served under /app so the public landing-site/ can occupy the domain root ("/").
-FROM node:20-alpine AS frontend-build
+FROM node:26-alpine AS frontend-build
 WORKDIR /src/frontend
 ARG VITE_API_BASE_URL=
 ARG VITE_BASE_PATH=/app/
